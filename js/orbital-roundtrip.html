@@ -423,10 +423,14 @@
     statusEl.classList.add('orb-status-off');
     statusText.textContent = 'idle';
     rpanelEl.classList.remove('orb-rsession-busy');
+    rpanelEl.classList.add('orb-rsession-idle');
+    if (cardEl) cardEl.classList.add('orb-card-idle');
   }
   function wakeUp() {
     statusEl.classList.remove('orb-status-off');
     statusText.textContent = 'running';
+    rpanelEl.classList.remove('orb-rsession-idle');
+    if (cardEl) cardEl.classList.remove('orb-card-idle');
   }
   // card + panel light up while the session is actively scoring
   function showScoring() {
@@ -451,6 +455,8 @@
     statusEl.classList.remove('orb-status-off');
     statusText.textContent = 'running';
     rpanelEl.classList.remove('orb-rsession-busy');
+    rpanelEl.classList.remove('orb-rsession-idle');
+    if (cardEl) cardEl.classList.remove('orb-card-idle');
   }
 
   // ---- phase transitions -------------------------------------------------

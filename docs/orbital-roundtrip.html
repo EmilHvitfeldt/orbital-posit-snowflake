@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-1d637c1700ebcf1b14f3b96bfad0803f.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-24291e0789340407b7ec71c30a427ffd.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -892,10 +892,14 @@
         statusEl.classList.add('orb-status-off');
         statusText.textContent = 'idle';
         rpanelEl.classList.remove('orb-rsession-busy');
+        rpanelEl.classList.add('orb-rsession-idle');
+        if (cardEl) cardEl.classList.add('orb-card-idle');
       }
       function wakeUp() {
         statusEl.classList.remove('orb-status-off');
         statusText.textContent = 'running';
+        rpanelEl.classList.remove('orb-rsession-idle');
+        if (cardEl) cardEl.classList.remove('orb-card-idle');
       }
       // card + panel light up while the session is actively scoring
       function showScoring() {
@@ -920,6 +924,8 @@
         statusEl.classList.remove('orb-status-off');
         statusText.textContent = 'running';
         rpanelEl.classList.remove('orb-rsession-busy');
+        rpanelEl.classList.remove('orb-rsession-idle');
+        if (cardEl) cardEl.classList.remove('orb-card-idle');
       }
 
       // ---- phase transitions -------------------------------------------------

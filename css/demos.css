@@ -97,10 +97,19 @@ section:has(.orb-slide) { overflow: hidden; }
   background: #f4f8fd;
   box-shadow: 0 6px 20px rgba(39, 109, 195, 0.14);
 }
-.orb-rsession { transition: box-shadow 0.3s ease, border-color 0.3s ease; }
+.orb-rsession { transition: box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease, opacity 0.3s ease, filter 0.3s ease; }
 /* the panel lights up while the (re-woken) session is actively working */
 .orb-rsession.orb-rsession-busy {
   box-shadow: 0 0 0 5px rgba(39, 109, 195, 0.20), 0 6px 20px rgba(39, 109, 195, 0.18);
+}
+/* idle between batches: still alive, but visibly dialled down (muted border,
+   washed-out fill, no glow) so "busy vs. waiting" reads at a glance */
+.orb-rsession.orb-rsession-idle {
+  border-color: #b9c2d0;
+  background: #f1f3f6;
+  box-shadow: 0 4px 14px rgba(39, 109, 195, 0.06);
+  opacity: 0.7;
+  filter: grayscale(0.45);
 }
 .orb-rsession-header {
   position: absolute;
@@ -160,10 +169,18 @@ section:has(.orb-slide) { overflow: hidden; }
 
 /* model card highlights while the R session is "scoring" (CSS owns this so it
    never fights anime.js for the card's transform) */
-.orb-card { transition: border-color 0.25s ease, box-shadow 0.25s ease; }
+.orb-card { transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.3s ease, opacity 0.3s ease, filter 0.3s ease; }
 .orb-card.orb-scoring {
   border-color: var(--orb-rblue, #276DC3);
   box-shadow: 0 0 0 5px rgba(39, 109, 195, 0.22);
+}
+/* idle between batches: the workflow/pipeline card dims along with its panel */
+.orb-card.orb-card-idle {
+  border-color: #c4ccd8;
+  background: #f1f3f6;
+  box-shadow: none;
+  opacity: 0.7;
+  filter: grayscale(0.45);
 }
 
 /* ghost copy of a data row, flying into the packet as it "collects" the data */
