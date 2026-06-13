@@ -26,11 +26,12 @@ format:
 []{.fragment .orb-frag id="orb-embed"}
 []{.fragment .orb-frag id="orb-run"}
 []{.fragment .orb-frag id="orb-newdata"}
+[]{.fragment .orb-frag id="orb-newpred"}
 
 <!-- Stages (one fragment marker each):
      stage 0: arrival — R session (left) + Snowflake table (right)   [DONE]
      stage 1: orbital() compiles the model into a SELECT ... AS .pred SQL chip  [DONE]
      stage 2: the SQL chip travels into Snowflake and docks over the table  [DONE]
      stage 3: query runs in place, .pred fills, R session no longer needed  [DONE]
-     stage 4: table scrolls down to a fresh batch of rows; the same standing
-              query scores them in place too (new data keeps flowing) -->
+     stage 4: table scrolls down to reveal a fresh batch of (unscored) rows
+     stage 5: the same standing query scores them in place too (no round-trip) -->

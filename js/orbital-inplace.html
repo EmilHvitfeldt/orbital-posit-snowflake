@@ -372,8 +372,10 @@
       chip.classList.add('orb-sql-active');
       predSpans.forEach((s, i) => { s.textContent = PRED_VALS[i]; s.style.opacity = 1; });
       windDownR();
-      if (phase === 4) {                          // scrolled to a fresh batch,
-        anime.set(scrollerEl, { translateY: -SCROLL_Y });        // already scored
+      if (phase >= 4) {                           // scrolled to a fresh batch
+        anime.set(scrollerEl, { translateY: -SCROLL_Y });
+      }
+      if (phase === 5) {                          // ...and the new batch is scored
         predSpans2.forEach((s, i) => { s.textContent = NEW_PRED_VALS[i]; s.style.opacity = 1; });
       }
     }
@@ -429,7 +431,6 @@
 
   function animateScroll() {           // phase 3 -> 4
     ip.phase = 4;
-    const gen = ++ip.token, live = () => ip.token === gen;
     // scroll the table down one page: the scored rows slide up and out, a fresh
     // batch of (still unscored) rows slides into view from below.
     anime.remove(scrollerEl);
@@ -437,17 +438,103 @@
       targets: scrollerEl, translateY: -SCROLL_Y,
       duration: 900, easing: 'easeInOutCubic',
     });
-    // once the new rows have settled, the same standing query scores them too
-    TM.pause(820, () => {
+  }
+
+  function animateNewFill() {          // phase 4 -> 5
+    ip.phase = 5;
+    const gen = ++ip.token, live = () => ip.token === gen;
+    // the same standing query runs again, scoring the freshly-scrolled rows
+    pulseChip();
+    TM.pause(280, () => { if (live()) fillPred(predSpans2, NEW_PRED_VALS); });
+  }
+
+  // ---- reverse transitions: each mirrors the matching forward step so a single
+  // back-nav plays the animation backwards instead of snapping. -------------
+  function reverseNewFill() {            // phase 5 -> 4
+    ip.phase = 4;
+    const gen = ++ip.token, live = () => ip.token === gen;
+    // the freshly-scored predictions un-fill (the standing query "un-runs")
+    anime.remove(predSpans2);
+    TM.anime({
+      targets: predSpans2, opacity: [1, 0], duration: 300, easing: 'easeInQuad',
+      complete: () => { if (live()) predSpans2.forEach((s) => { s.textContent = ''; }); },
+    });
+  }
+
+  function reverseScroll() {             // phase 4 -> 3
+    ip.phase = 3;
+    // scroll the fresh batch back down out of view, the scored rows return
+    anime.remove(scrollerEl);
+    TM.anime({ targets: scrollerEl, translateY: 0, duration: 900, easing: 'easeInOutCubic' });
+  }
+
+  function reverseFill() {               // phase 3 -> 2
+    ip.phase = 2;
+    const gen = ++ip.token, live = () => ip.token === gen;
+    // predictions un-fill and the docked query goes quiet again
+    anime.remove(predSpans);
+    TM.anime({
+      targets: predSpans, opacity: [1, 0], duration: 300, easing: 'easeInQuad',
+      complete: () => { if (live()) predSpans.forEach((s) => { s.textContent = ''; }); },
+    });
+    if (ip.chip) ip.chip.classList.remove('orb-sql-active');
+  }
+
+  function reverseDock() {               // phase 2 -> 1
+    ip.phase = 1;
+    const gen = ++ip.token, live = () => ip.token === gen;
+    const chip = ip.chip || makeChip(CHIP_S.x, CHIP_S.y, CHIP_DOCK_SCALE);
+    anime.remove(chip);
+    // the query travels back out of the corner to its full-size spot on the card
+    TM.anime({
+      targets: chip, translateX: CHIP.x, translateY: CHIP.y, scale: 1,
+      duration: 850, easing: 'easeInOutCubic',
+    });
+    // as the SQL leaves Snowflake again the R session comes back up
+    TM.pause(420, () => { if (live()) restoreR(); });
+  }
+
+  function reverseCompile() {            // phase 1 -> 0
+    ip.phase = 0;
+    const gen = ++ip.token, live = () => ip.token === gen;
+    // the orbital() lens drops back in over the (still hidden) card
+    const pill = makeAt('orb-orbital', PILL.x, PILL.y);
+    pill.textContent = 'orbital()';
+    pill.style.opacity = 0;
+    TM.anime({ targets: pill, opacity: 1, scale: [0.7, 1], duration: 260, easing: 'easeOutBack' });
+    // the compiled SQL chip scales back out as the model card fades back in
+    const chip = ip.chip;
+    if (chip) {
+      TM.anime({
+        targets: chip, opacity: 0, scale: 0.82, duration: 380, easing: 'easeInQuad',
+        complete: () => {
+          if (!live()) return;
+          chip.remove();
+          const i = ip.els.indexOf(chip); if (i >= 0) ip.els.splice(i, 1);
+          ip.chip = null;
+        },
+      });
+    }
+    anime.remove(cardEl);
+    TM.anime({ targets: cardEl, opacity: 1, duration: 380, delay: 200, easing: 'easeOutQuad' });
+    // the lens has done its job — fade it back out and clean it up
+    TM.pause(900, () => {
       if (!live()) return;
-      pulseChip();
-      TM.pause(280, () => { if (live()) fillPred(predSpans2, NEW_PRED_VALS); });
+      TM.anime({
+        targets: pill, opacity: 0, duration: 260, easing: 'easeInQuad',
+        complete: () => {
+          if (!live()) return;
+          pill.remove();
+          const i = ip.els.indexOf(pill); if (i >= 0) ip.els.splice(i, 1);
+        },
+      });
     });
   }
 
   function render(stage) {
     if (!build()) return;
-    const target = stage >= 4 ? 4
+    const target = stage >= 5 ? 5
+                 : stage >= 4 ? 4
                  : stage >= 3 ? 3
                  : stage >= 2 ? 2
                  : stage >= 1 ? 1 : 0;
@@ -456,15 +543,22 @@
       if (target === 1) animateCompile();
       else if (target === 2) animateDock();
       else if (target === 3) animateFill();
-      else animateScroll();
-    } else {                             // back-nav / multi-step jump -> snap
+      else if (target === 4) animateScroll();
+      else animateNewFill();
+    } else if (ip.phase - target === 1) { // single back step -> reverse animate
+      if (ip.phase === 1) reverseCompile();
+      else if (ip.phase === 2) reverseDock();
+      else if (ip.phase === 3) reverseFill();
+      else if (ip.phase === 4) reverseScroll();
+      else reverseNewFill();
+    } else {                             // multi-step jump -> snap
       snapTo(target);
     }
   }
 
   TM.gate({
     markerClass: 'orb-slide',
-    fragmentIds: ['orb-compile', 'orb-embed', 'orb-run', 'orb-newdata'],
+    fragmentIds: ['orb-compile', 'orb-embed', 'orb-run', 'orb-newdata', 'orb-newpred'],
     render,
   });
 })();

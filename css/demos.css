@@ -97,6 +97,11 @@ section:has(.orb-slide) { overflow: hidden; }
   background: #f4f8fd;
   box-shadow: 0 6px 20px rgba(39, 109, 195, 0.14);
 }
+.orb-rsession { transition: box-shadow 0.3s ease, border-color 0.3s ease; }
+/* the panel lights up while the (re-woken) session is actively working */
+.orb-rsession.orb-rsession-busy {
+  box-shadow: 0 0 0 5px rgba(39, 109, 195, 0.20), 0 6px 20px rgba(39, 109, 195, 0.18);
+}
 .orb-rsession-header {
   position: absolute;
   top: 0;

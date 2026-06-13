@@ -27,3 +27,6 @@ format:
 
 []{.fragment .orb-frag id="orb-rt-out"}
 []{.fragment .orb-frag id="orb-rt-back"}
+[]{.fragment .orb-frag id="orb-rt-newscroll"}
+[]{.fragment .orb-frag id="orb-rt-new-out"}
+[]{.fragment .orb-frag id="orb-rt-new-back"}

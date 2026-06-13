@@ -24,8 +24,16 @@ format:
 
 []{.fragment .orb-frag id="orb-rt-out"}
 []{.fragment .orb-frag id="orb-rt-back"}
+[]{.fragment .orb-frag id="orb-rt-newscroll"}
+[]{.fragment .orb-frag id="orb-rt-new-out"}
+[]{.fragment .orb-frag id="orb-rt-new-back"}
 
 <!-- Stages (one fragment marker each):
      stage 0: arrival — R session (left) + Snowflake table (right)
      stage 1: data Snowflake -> R session, enters workflow top, "calculates"
-     stage 2: prediction exits workflow bottom, travels back, .pred fills -->
+     stage 2: prediction exits workflow bottom, travels back, .pred fills;
+              the session drops to idle
+     stage 3: table scrolls to reveal a fresh batch of (unscored) rows
+     stage 4: the idle session is woken; the new rows make the same trip out
+              (collect -> session -> scoring)
+     stage 5: new predictions travel back, fill in place, session idles again -->
