@@ -227,6 +227,14 @@ section:has(.orb-slide) { overflow: hidden; }
   white-space: nowrap;
   text-align: left;
 }
+/* the docked query, lit up while it runs to generate predictions */
+.orb-sql-active {
+  border-color: var(--orb-blue, #29B5E8);
+  background: #f3fbff;
+  box-shadow: 0 5px 18px rgba(29, 36, 51, 0.14),
+              0 0 0 4px rgba(41, 181, 232, 0.22);
+  transition: box-shadow 0.25s ease, background 0.25s ease;
+}
 .orb-sql .orb-kw    { color: #2b6cb0; font-weight: 700; }
 .orb-sql .orb-col   { color: var(--orb-blue, #29B5E8); font-weight: 700; }
 .orb-sql .orb-model {

@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-7dd3a851a3880de053adab6b47ef41ab.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-20cc3504c8763cfde36a8ac40228505f.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -518,7 +518,7 @@
       const NROWS = 6;
       const TABLE_W = COLS.length * CELL_W;
       const TABLE_X = PANEL.x + (PANEL.w - TABLE_W) / 2;
-      const TABLE_Y = PANEL.y + 90;
+      const TABLE_Y = PANEL.y + (VERT ? 95 : 110);
 
       const DATA = [
         [1, 0.42, 1.7, 'A'],
@@ -721,16 +721,24 @@
         return el;
       }
 
-      function makeChip(x, y) {
+      function makeChip(x, y, scale) {
         const chip = makeAt('orb-sql', x, y);
         chip.innerHTML = SQL_HTML;
+        if (scale != null) anime.set(chip, { scale });
         ip.chip = chip;
         return chip;
       }
 
-      // docked position inside the Snowflake panel (centred over the table; chip is
-      // ~298px wide incl. padding, so half = 149)
-      const CHIP_S = { x: TABLE_X + TABLE_W / 2 - 149, y: TABLE_Y + 36 };
+      // docked position: the compiled SQL tucks into the top-right corner of the
+      // Snowflake/Database box and *stays* there — it becomes a standing view that
+      // is re-run to generate predictions (rather than dissolving into the table).
+      // The chip is ~298px wide (half = 149); scale it down to sit in the corner.
+      const CHIP_DOCK_SCALE = 0.7;
+      const CHIP_DOCK_MARGIN = 30;   // gap from the panel's right edge
+      const CHIP_S = {
+        x: PANEL.x + PANEL.w - CHIP_DOCK_MARGIN - 149 * CHIP_DOCK_SCALE - 149,
+        y: PANEL.y + 8,
+      };
 
       // once the SQL is in Snowflake, the R session has nothing left to do
       function windDownR() {
@@ -769,8 +777,10 @@
         if (phase === 0) return;
         if (phase >= 1) cardEl.style.opacity = 0;   // model is now the SQL chip
         if (phase === 1) makeChip(CHIP.x, CHIP.y);
-        else if (phase === 2) { makeChip(CHIP_S.x, CHIP_S.y); windDownR(); }
-        else if (phase === 3) {                      // ran in place: no chip, filled
+        else if (phase === 2) { makeChip(CHIP_S.x, CHIP_S.y, CHIP_DOCK_SCALE); windDownR(); }
+        else if (phase === 3) {                      // SQL still docked in the corner,
+          const chip = makeChip(CHIP_S.x, CHIP_S.y, CHIP_DOCK_SCALE);  // re-run to fill
+          chip.classList.add('orb-sql-active');
           predSpans.forEach((s, i) => { s.textContent = PRED_VALS[i]; s.style.opacity = 1; });
           windDownR();
         }
@@ -804,10 +814,10 @@
         const gen = ++ip.token, live = () => ip.token === gen;
         const chip = ip.chip || makeChip(CHIP.x, CHIP.y);
         anime.remove(chip);                // cancel any residual tween
-        // the query travels into Snowflake and docks over the table
+        // the query travels into Snowflake and tucks into the top-right corner
         TM.anime({
           targets: chip,
-          translateX: CHIP_S.x, translateY: CHIP_S.y, scale: 0.92,
+          translateX: CHIP_S.x, translateY: CHIP_S.y, scale: CHIP_DOCK_SCALE,
           duration: 850, easing: 'easeInOutCubic',
         });
         // as the SQL leaves for Snowflake, the R session winds down
@@ -818,17 +828,14 @@
         ip.phase = 3;
         const gen = ++ip.token, live = () => ip.token === gen;
         const chip = ip.chip;
-        // the docked query "runs" and dissolves into the table
+        // the docked query stays put and "runs": it lights up and gives a quick
+        // pulse, as if being executed to generate the predictions in the table
         if (chip) {
           anime.remove(chip);
+          chip.classList.add('orb-sql-active');
           TM.anime({
-            targets: chip, opacity: 0, scale: 0.8, duration: 420, easing: 'easeInQuad',
-            complete: () => {
-              if (!live()) return;
-              chip.remove();
-              const i = ip.els.indexOf(chip); if (i >= 0) ip.els.splice(i, 1);
-              ip.chip = null;
-            },
+            targets: chip, scale: CHIP_DOCK_SCALE * 1.07,
+            duration: 240, easing: 'easeOutQuad', direction: 'alternate', loop: 2,
           });
         }
         // predictions appear in place — no round-trip (R session already wound down)
