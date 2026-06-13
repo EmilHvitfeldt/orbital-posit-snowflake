@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-ad1c32966bd20400d328c584311105aa.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-a411b22c247a4607b42779af7872d5cf.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -608,11 +608,25 @@
         card.appendChild(ct);
         card.appendChild(cc);
 
-        // Snowflake: a standalone panel (non-Posit) or the outer container (Posit)
+        // Snowflake: a standalone panel (non-Posit), or the outer container (Posit)
+        // where the data table gets its own nested "Database" box that mirrors the
+        // Workbench box — both live inside the Snowflake account (Database = where
+        // tables physically sit, the storage counterpart to the compute session).
         if (!POSIT) {
           const panel = node('orb-snowflake', PANEL.x, PANEL.y, stage);
           panel.style.width = PANEL.w + 'px';
           panel.style.height = PANEL.h + 'px';
+        } else {
+          const db = node('orb-database', PANEL.x, PANEL.y, stage);
+          db.style.width = PANEL.w + 'px';
+          db.style.height = PANEL.h + 'px';
+          const dbh = node('orb-database-header', PANEL.x + 24, PANEL.y + 22, stage);
+          const dbicon = document.createElement('span');
+          dbicon.className = 'orb-dbicon';
+          const dblabel = document.createElement('span');
+          dblabel.textContent = 'Database';
+          dbh.appendChild(dbicon);
+          dbh.appendChild(dblabel);
         }
         const hX = POSIT ? SF.x + 26 : PANEL.x + 24;
         const hY = POSIT ? SF.y + 16 : PANEL.y + 22;
@@ -686,15 +700,19 @@
                      : TABLE_Y + HEAD_H + (NROWS + 1) * ROW_H + 7,
       };
       // the packet enters/exits the workflow card on the side facing the data
-      // (horizontal: in the top, out the bottom; vertical: in & out the bottom).
-      // packet is 130x52 in CSS, so 65 = half width.
+      // (horizontal: in the top, out the bottom; vertical: data in the LEFT edge,
+      // predictions out the RIGHT edge). packet is 130x52 in CSS, so 65/26 = half
+      // width/height. Each side has a staging point (sx,sy) and an into/out-of-card
+      // point (ix,iy / ox,oy); both axes are tweened so one set of code serves both
+      // orientations (the unchanged axis is a no-op).
       const CARD_CX = CARD.x + CARD.w / 2 - 65;
+      const CARD_CY = CARD.y + CARD.h / 2 - 26;     // packet centred on the card row
       const ENTER = VERT
-        ? { x: CARD_CX, aboveY: CARD.y + CARD.h + 55, intoY: CARD.y + CARD.h - 45 }
-        : { x: CARD_CX, aboveY: CARD.y - 65,          intoY: CARD.y + 18 };
+        ? { sx: CARD.x - 150, sy: CARD_CY,            ix: CARD.x - 30,          iy: CARD_CY }
+        : { sx: CARD_CX,      sy: CARD.y - 65,        ix: CARD_CX,              iy: CARD.y + 18 };
       const EXIT = VERT
-        ? { x: CARD_CX, insideY: CARD.y + CARD.h - 45, belowY: CARD.y + CARD.h + 55 }
-        : { x: CARD_CX, insideY: CARD.y + CARD.h - 72, belowY: CARD.y + CARD.h + 12 };
+        ? { sx: CARD.x + CARD.w - 110, sy: CARD_CY,            ox: CARD.x + CARD.w + 10, oy: CARD_CY }
+        : { sx: CARD_CX,               sy: CARD.y + CARD.h - 72, ox: CARD_CX,            oy: CARD.y + CARD.h + 12 };
       const FEATURE_W = (COLS.length - 1) * CELL_W;          // span of feature cols
       function featureRowY(r) { return TABLE_Y + HEAD_H + r * ROW_H; }
       // where the returning packet lands: centred over the .pred column / data rows
@@ -726,7 +744,13 @@
         anime.set(pkt, { translateX: x, translateY: y });
         return pkt;
       }
-      // ghost copies of each data row drop into the packet ("collecting" the data)
+      // ghost copies of each data row drop into the packet ("collecting" the data).
+      // ghosts are FEATURE_W wide and scale down around their own centre, so to land
+      // *inside* the 130x52 packet we target the packet's centre, not its left edge.
+      const GHOST_LAND = {
+        x: PKT.startX + 65 - FEATURE_W / 2,
+        y: PKT.startY + 26 - (ROW_H - 12) / 2,
+      };
       function collectRows() {
         const stage = document.getElementById('orb-stage');
         for (let r = 0; r < NROWS; r++) {
@@ -741,7 +765,7 @@
             targets: g,
             keyframes: [
               { opacity: 0.85, duration: 140 },                                   // light up the row
-              { translateX: PKT.startX, translateY: PKT.startY, scale: 0.25, opacity: 0, duration: 480 },
+              { translateX: GHOST_LAND.x, translateY: GHOST_LAND.y, scale: 0.25, opacity: 0, duration: 480 },
             ],
             delay: r * 70,
             easing: 'easeInOutQuad',
@@ -825,13 +849,14 @@
         const COLLECT_MS = (NROWS - 1) * 70 + 140 + 480 + 120;   // last ghost lands + beat
         TM.pause(COLLECT_MS, () => {
           if (!live()) return;
-          // travel to the R session, then enter the workflow at the top
-          fly(pkt, ENTER.x, ENTER.aboveY, 950, () => {
+          // travel to the R session, then enter the workflow (top, or left edge in
+          // vertical decks)
+          fly(pkt, ENTER.sx, ENTER.sy, 950, () => {
             if (!live()) return;
             cardEl.classList.add('orb-scoring');
             showGear();
             TM.anime({
-              targets: pkt, translateY: ENTER.intoY, opacity: [1, 0],
+              targets: pkt, translateX: ENTER.ix, translateY: ENTER.iy, opacity: [1, 0],
               duration: 450, easing: 'easeInQuad',
               complete: () => {
                 if (!live()) return;
@@ -849,11 +874,12 @@
         const gen = ++rt.token, live = () => rt.token === gen;
         cardEl.classList.remove('orb-scoring');
         removeGear();
-        // prediction emerges from the bottom of the workflow, then travels back
-        const pkt = makePacket(EXIT.x, EXIT.insideY, '+ .pred');
+        // prediction emerges from the workflow (bottom, or right edge in vertical
+        // decks), then travels back
+        const pkt = makePacket(EXIT.sx, EXIT.sy, '+ .pred');
         pkt.style.opacity = 0;
         TM.anime({
-          targets: pkt, translateY: EXIT.belowY, opacity: [0, 1],
+          targets: pkt, translateX: EXIT.ox, translateY: EXIT.oy, opacity: [0, 1],
           duration: 380, easing: 'easeOutQuad',
           complete: () => {
             if (!live()) return;

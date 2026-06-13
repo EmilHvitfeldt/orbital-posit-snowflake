@@ -308,6 +308,16 @@ section:has(.orb-slide) { overflow: hidden; }
 
 /* flat data table inside the Snowflake panel (a ruled header + hairline row
    separators, no per-cell boxes) */
+/* clipped viewport the data rows scroll inside (header stays fixed above it) */
+.orb-tableview {
+  overflow: hidden;
+}
+.orb-scroller {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
 .orb-cell {
   position: absolute;
   top: 0;

@@ -26,6 +26,7 @@ format:
 []{.fragment .orb-frag id="orb-compile"}
 []{.fragment .orb-frag id="orb-embed"}
 []{.fragment .orb-frag id="orb-run"}
+[]{.fragment .orb-frag id="orb-newdata"}
 
 <!-- Same choreography as orbital-inplace, but the Posit session is nested inside
      Snowflake: orbital() compiles the model to SQL, the SQL leaves the session
