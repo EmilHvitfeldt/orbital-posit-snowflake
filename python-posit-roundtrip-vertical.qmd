@@ -1,0 +1,31 @@
+---
+title: "Posit + Snowflake: Python session in Snowflake, round-trip (vertical)"
+format:
+  revealjs:
+    width: 900
+    height: 1200
+    include-after-body:
+      - js/orbital-roundtrip.html
+---
+
+```{=html}
+<script>
+  window.ORB_POSIT         = true;
+  window.ORB_ORIENT        = 'vertical';
+  window.ORB_MODEL_LABEL   = 'Pipeline';
+  window.ORB_SESSION_LABEL = 'Posit Workbench';
+  window.ORB_SESSION_LOGO  = 'Py';
+  window.ORB_SNOWFLAKE     = '#29B5E8';
+  window.ORB_RSESSION      = '#3776AB';
+</script>
+```
+
+## {.orb-slide}
+
+::: {.orb-stage-wrap}
+<div id="orb-title" class="orb-title"></div>
+<div id="orb-stage"></div>
+:::
+
+[]{.fragment .orb-frag id="orb-rt-out"}
+[]{.fragment .orb-frag id="orb-rt-back"}

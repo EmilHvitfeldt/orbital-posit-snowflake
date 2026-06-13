@@ -1,0 +1,8 @@
+# Quarto build artifacts (the site renders into docs/, which IS committed)
+/.quarto/
+/_site/
+*_files/
+**/*.quarto_ipynb
+
+# OS
+.DS_Store

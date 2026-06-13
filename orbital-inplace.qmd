@@ -1,0 +1,35 @@
+---
+title: "orbital + Snowflake: predictions in place"
+format:
+  revealjs:
+    include-after-body:
+      - js/orbital-inplace.html
+---
+
+```{=html}
+<!-- Configure per-deck labels/colours here. -->
+<script>
+  window.ORB_MODEL_LABEL = 'workflow()';   // R: workflow()  |  Python: Pipeline
+  window.ORB_SNOWFLAKE   = '#29B5E8';       // Snowflake brand blue
+  window.ORB_RSESSION    = '#276DC3';       // R blue
+</script>
+```
+
+## {.orb-slide}
+
+::: {.orb-stage-wrap}
+<div id="orb-title" class="orb-title"></div>
+<div id="orb-stage"></div>
+:::
+
+[]{.fragment .orb-frag id="orb-compile"}
+[]{.fragment .orb-frag id="orb-embed"}
+[]{.fragment .orb-frag id="orb-run"}
+
+<!-- Stages (one fragment marker each):
+     stage 0: arrival — R session (left) + Snowflake table (right)   [DONE]
+     stage 1: orbital() compiles the model into a SELECT ... AS .pred SQL chip  [DONE]
+     stage 2: the SQL chip travels into Snowflake and docks over the table  [DONE]
+     stage 3: query runs in place, .pred fills, R session no longer needed  [DONE]
+     stage 2: the SQL chip travels into Snowflake and embeds there
+     stage 3: .pred fills in place; R session no longer needed -->

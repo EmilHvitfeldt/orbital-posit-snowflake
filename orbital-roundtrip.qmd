@@ -1,0 +1,31 @@
+---
+title: "orbital + Snowflake: round-trip vs. in-place"
+format:
+  revealjs:
+    include-after-body:
+      - js/orbital-roundtrip.html
+---
+
+```{=html}
+<!-- Configure per-deck labels/colours here. -->
+<script>
+  window.ORB_MODEL_LABEL = 'workflow()';   // R: workflow()  |  Python: Pipeline
+  window.ORB_SNOWFLAKE   = '#29B5E8';       // Snowflake brand blue
+  window.ORB_RSESSION    = '#276DC3';       // R blue
+</script>
+```
+
+## {.orb-slide}
+
+::: {.orb-stage-wrap}
+<div id="orb-title" class="orb-title"></div>
+<div id="orb-stage"></div>
+:::
+
+[]{.fragment .orb-frag id="orb-rt-out"}
+[]{.fragment .orb-frag id="orb-rt-back"}
+
+<!-- Stages (one fragment marker each):
+     stage 0: arrival — R session (left) + Snowflake table (right)
+     stage 1: data Snowflake -> R session, enters workflow top, "calculates"
+     stage 2: prediction exits workflow bottom, travels back, .pred fills -->

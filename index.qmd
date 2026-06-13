@@ -1,0 +1,33 @@
+---
+title: "orbital + Snowflake"
+subtitle: "Animated explainers for scoring models inside Snowflake"
+format:
+  html:
+    page-layout: full
+    css: css/index.css
+---
+
+These RevealJS decks contrast two ways of scoring a trained [tidymodels](https://www.tidymodels.org/) (R) or [scikit-learn](https://scikit-learn.org/) (Python) model against data living in Snowflake:
+
+- **the "before" (round-trip)** — the data is sent to a live session, scored through the workflow, and the predictions come back; and
+- **the orbital way (in place)** — [orbital](https://orbital.tidymodels.org/) compiles the model to SQL that runs *inside* Snowflake, so there is no round-trip and no live runtime.
+
+Each deck comes in a **Posit** framing (the session runs inside Snowflake via the Posit Team Native App) and a **vertical** (portrait) layout, in both **R** and **Python** — 16 decks in all. Use the arrow keys to step through the stages.
+
+## R · tidymodels
+
+| | round-trip (the "before") | orbital (in place) |
+|---|---|---|
+| **session beside Snowflake** | [horizontal](orbital-roundtrip.html) · [vertical](orbital-roundtrip-vertical.html) | [horizontal](orbital-inplace.html) · [vertical](orbital-inplace-vertical.html) |
+| **session inside Snowflake (Posit)** | [horizontal](posit-roundtrip.html) · [vertical](posit-roundtrip-vertical.html) | [horizontal](posit-inplace.html) · [vertical](posit-inplace-vertical.html) |
+
+## Python · scikit-learn
+
+| | round-trip (the "before") | orbital (in place) |
+|---|---|---|
+| **session beside Snowflake** | [horizontal](python-orbital-roundtrip.html) · [vertical](python-orbital-roundtrip-vertical.html) | [horizontal](python-orbital-inplace.html) · [vertical](python-orbital-inplace-vertical.html) |
+| **session inside Snowflake (Posit)** | [horizontal](python-posit-roundtrip.html) · [vertical](python-posit-roundtrip-vertical.html) | [horizontal](python-posit-inplace.html) · [vertical](python-posit-inplace-vertical.html) |
+
+---
+
+Built with Quarto RevealJS + [anime.js](https://animejs.com/), following the [tidy-animations](https://github.com/EmilHvitfeldt/tidy-animations) framework. See [orbital](https://orbital.tidymodels.org/) for the real package.

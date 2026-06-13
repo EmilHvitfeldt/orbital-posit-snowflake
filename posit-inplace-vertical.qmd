@@ -1,0 +1,30 @@
+---
+title: "Posit + Snowflake: orbital in place, in Snowflake (vertical)"
+format:
+  revealjs:
+    width: 900
+    height: 1200
+    include-after-body:
+      - js/orbital-inplace.html
+---
+
+```{=html}
+<script>
+  window.ORB_POSIT       = true;
+  window.ORB_ORIENT      = 'vertical';   // session on top, data on the bottom
+  window.ORB_MODEL_LABEL = 'workflow()';
+  window.ORB_SNOWFLAKE   = '#29B5E8';
+  window.ORB_RSESSION    = '#276DC3';
+</script>
+```
+
+## {.orb-slide}
+
+::: {.orb-stage-wrap}
+<div id="orb-title" class="orb-title"></div>
+<div id="orb-stage"></div>
+:::
+
+[]{.fragment .orb-frag id="orb-compile"}
+[]{.fragment .orb-frag id="orb-embed"}
+[]{.fragment .orb-frag id="orb-run"}

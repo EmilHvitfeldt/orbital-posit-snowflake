@@ -1,0 +1,339 @@
+/* ---- orbital + Snowflake animation styles ---- */
+
+/* loaded as a reveal theme, so it must declare an SCSS rules boundary */
+/*-- scss:rules --*/
+
+:root {
+  --tm-ink: #1d2433;          /* default text / borders */
+}
+
+/* ---- orbital + Snowflake (round-trip vs. in-place) ---- */
+section:has(.orb-slide) { overflow: hidden; }
+
+.orb-stage-wrap { position: relative; margin-top: 10px; }
+
+.orb-title {
+  text-align: center;
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--tm-ink);
+  min-height: 50px;   /* reserve space so revealing text causes no layout shift */
+  opacity: 0;
+}
+
+/* fixed-size coordinate box; JS positions children in this same space */
+#orb-stage {
+  position: relative;
+  width: 1180px;
+  height: 600px;
+  margin: 0 auto;
+}
+
+/* invisible markers — they only exist to advance Reveal fragments */
+.orb-frag {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0 !important;
+}
+
+/* generic absolutely-positioned node, placed via translate() in stage coords */
+.orb-node {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  will-change: transform, opacity;
+}
+
+/* the trained-model card on the left */
+.orb-card {
+  width: 230px;
+  height: 150px;
+  border-radius: 14px;
+  border: 2px solid var(--tm-ink);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(29, 36, 51, 0.10);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.orb-card-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--tm-ink);
+}
+.orb-card-code {
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--tm-ink);
+  background: #eef1f6;
+  border-radius: 8px;
+  padding: 6px 14px;
+}
+
+/* the R-session group (panel + header + card) — winds down as one */
+.orb-rgroup {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;   /* full-stage wrapper must not intercept anything */
+  transition: opacity 0.5s ease, filter 0.5s ease;
+}
+/* wound down once the work moved to Snowflake as SQL */
+.orb-rgroup.orb-rsession-down {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+
+/* the R-session panel on the left (mirrors the Snowflake panel) */
+.orb-rsession {
+  border-radius: 16px;
+  border: 3px solid var(--orb-rblue, #276DC3);
+  background: #f4f8fd;
+  box-shadow: 0 6px 20px rgba(39, 109, 195, 0.14);
+}
+.orb-rsession-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--orb-rblue, #276DC3);
+}
+/* "running" status pill — signals the R session must be live for this to work */
+.orb-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2e9e5b;
+}
+.orb-status-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #2e9e5b;
+  animation: orb-pulse 1.6s ease-out infinite;
+}
+@keyframes orb-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(46, 158, 91, 0.55); }
+  70%  { box-shadow: 0 0 0 9px rgba(46, 158, 91, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 158, 91, 0); }
+}
+/* once it's pure SQL in Snowflake, the R session is no longer needed */
+.orb-status { transition: color 0.4s ease; }
+.orb-status.orb-status-off { color: #9aa1ad; }
+.orb-status.orb-status-off .orb-status-dot {
+  background: #9aa1ad;
+  animation: none;
+  box-shadow: none;
+  transition: background 0.4s ease;
+}
+
+.orb-rsession-header .orb-rlogo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--orb-rblue, #276DC3);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* model card highlights while the R session is "scoring" (CSS owns this so it
+   never fights anime.js for the card's transform) */
+.orb-card { transition: border-color 0.25s ease, box-shadow 0.25s ease; }
+.orb-card.orb-scoring {
+  border-color: var(--orb-rblue, #276DC3);
+  box-shadow: 0 0 0 5px rgba(39, 109, 195, 0.22);
+}
+
+/* ghost copy of a data row, flying into the packet as it "collects" the data */
+.orb-ghost {
+  border-radius: 6px;
+  background: rgba(41, 181, 232, 0.28);
+  border: 1.5px solid var(--orb-blue, #29B5E8);
+}
+
+/* spinning gear shown while the workflow "thinks" (positioned via left/top so
+   anime owns only the rotate transform) */
+.orb-gear {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  font-size: 32px;
+  line-height: 34px;
+  text-align: center;
+  color: var(--orb-rblue, #276DC3);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* a data packet travelling the lane between the two panels */
+.orb-packet {
+  width: 130px;
+  height: 52px;
+  border-radius: 10px;
+  border: 2px solid var(--orb-rblue, #276DC3);
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(29, 36, 51, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--orb-rblue, #276DC3);
+}
+
+/* the orbital() operator pill (the "compile" lens) */
+.orb-orbital {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: var(--orb-rblue, #276DC3);
+  color: #fff;
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 19px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(39, 109, 195, 0.32);
+}
+
+/* the compiled SQL chip (model -> SELECT ... AS .pred) */
+.orb-sql {
+  width: 298px;       /* fixed so JS can position/centre it predictably (half = 149) */
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid var(--orb-blue, #29B5E8);
+  background: #ffffff;
+  box-shadow: 0 5px 18px rgba(29, 36, 51, 0.14);
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--tm-ink);
+  white-space: nowrap;
+  text-align: left;
+}
+.orb-sql .orb-kw    { color: #2b6cb0; font-weight: 700; }
+.orb-sql .orb-col   { color: var(--orb-blue, #29B5E8); font-weight: 700; }
+.orb-sql .orb-model {
+  background: rgba(39, 109, 195, 0.14);
+  color: var(--orb-rblue, #276DC3);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-weight: 700;
+}
+
+/* Posit framing: dashed divider marking the runtime boundary the data crosses
+   (R session runtime <-> SQL data) inside the Snowflake container */
+.orb-boundary {
+  width: 0;
+  border-left: 2px dashed rgba(41, 181, 232, 0.55);
+}
+.orb-boundary-h {     /* same divider, for the vertical (stacked) layout */
+  height: 0;
+  border-top: 2px dashed rgba(41, 181, 232, 0.55);
+}
+
+/* the Snowflake panel on the right */
+.orb-snowflake {
+  border-radius: 16px;
+  border: 3px solid var(--orb-blue, #29B5E8);
+  background: #f5fbfe;
+  box-shadow: 0 6px 20px rgba(41, 181, 232, 0.16);
+}
+.orb-snowflake-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--orb-blue, #29B5E8);
+}
+.orb-snowflake-header .orb-flake { font-size: 28px; }
+
+/* nested "Database" box wrapping the data table in Posit decks — mirrors the
+   Workbench box; both sit inside the Snowflake container. Database is where
+   tables physically live (the storage counterpart to the compute session). */
+.orb-database {
+  border-radius: 14px;
+  border: 2px solid var(--orb-blue, #29B5E8);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(41, 181, 232, 0.12);
+}
+.orb-database-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--orb-blue, #29B5E8);
+}
+/* a small CSS cylinder, the conventional database glyph */
+.orb-database-header .orb-dbicon {
+  width: 22px;
+  height: 24px;
+  border-radius: 11px / 6px;
+  background: var(--orb-blue, #29B5E8);
+  box-shadow: inset 0 6px 0 -3px rgba(255, 255, 255, 0.55),
+              inset 0 -5px 0 -3px rgba(255, 255, 255, 0.30);
+}
+
+/* flat data table inside the Snowflake panel (a ruled header + hairline row
+   separators, no per-cell boxes) */
+.orb-cell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #d6dde6;   /* hairline row separator */
+  background: transparent;
+  box-sizing: border-box;
+  font-size: 17px;
+  color: var(--tm-ink);
+  will-change: transform, opacity, color;
+}
+.orb-cell.orb-head {
+  align-items: flex-end;
+  padding-bottom: 5px;
+  font-size: 16px;
+  font-weight: 700;
+  border-bottom: 2px solid var(--tm-ink);   /* the header rule */
+}
+/* the reserved .pred column: blue accent, header ruled blue; cells empty now */
+.orb-cell.orb-pred {
+  color: var(--orb-blue, #29B5E8);
+  font-weight: 700;
+}
+.orb-cell.orb-pred.orb-head {
+  border-bottom-color: var(--orb-blue, #29B5E8);
+}
+/* the "more rows" ellipsis row */
+.orb-cell.orb-dots {
+  color: #9aa1ad;
+  font-size: 22px;
+  font-weight: 700;
+  border-bottom: none;
+  align-items: flex-start;
+}

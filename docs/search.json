@@ -1,0 +1,23 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "orbital + Snowflake",
+    "section": "",
+    "text": "These RevealJS decks contrast two ways of scoring a trained tidymodels (R) or scikit-learn (Python) model against data living in Snowflake:\nEach deck comes in a Posit framing (the session runs inside Snowflake via the Posit Team Native App) and a vertical (portrait) layout, in both R and Python — 16 decks in all. Use the arrow keys to step through the stages."
+  },
+  {
+    "objectID": "index.html#r-tidymodels",
+    "href": "index.html#r-tidymodels",
+    "title": "orbital + Snowflake",
+    "section": "R · tidymodels",
+    "text": "R · tidymodels\n\n\n\n\nround-trip (the “before”)\norbital (in place)\n\n\n\n\nsession beside Snowflake\nhorizontal · vertical\nhorizontal · vertical\n\n\nsession inside Snowflake (Posit)\nhorizontal · vertical\nhorizontal · vertical"
+  },
+  {
+    "objectID": "index.html#python-scikit-learn",
+    "href": "index.html#python-scikit-learn",
+    "title": "orbital + Snowflake",
+    "section": "Python · scikit-learn",
+    "text": "Python · scikit-learn\n\n\n\n\nround-trip (the “before”)\norbital (in place)\n\n\n\n\nsession beside Snowflake\nhorizontal · vertical\nhorizontal · vertical\n\n\nsession inside Snowflake (Posit)\nhorizontal · vertical\nhorizontal · vertical\n\n\n\n\nBuilt with Quarto RevealJS + anime.js, following the tidy-animations framework. See orbital for the real package."
+  }
+]

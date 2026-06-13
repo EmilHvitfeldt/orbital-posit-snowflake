@@ -1,0 +1,16 @@
+/* landing page (index.qmd) — small touches on top of the cosmo theme */
+.quarto-title-block .subtitle { color: #5a6472; font-weight: 400; }
+
+main table {
+  width: 100%;
+  margin: 0.5rem 0 2rem;
+}
+main table th, main table td {
+  padding: 0.6rem 0.9rem;
+  vertical-align: middle;
+}
+main table thead th { background: #f5fbfe; }
+main table tbody th { white-space: nowrap; font-weight: 600; }
+main table td a { font-weight: 600; }
+
+h2 { margin-top: 2rem; }
