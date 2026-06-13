@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-ad1c32966bd20400d328c584311105aa.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-24291e0789340407b7ec71c30a427ffd.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -158,7 +158,7 @@
 
 </div>
 </div>
-<p><span id="orb-rt-out" class="fragment orb-frag"></span> <span id="orb-rt-back" class="fragment orb-frag"></span></p>
+<p><span id="orb-rt-out" class="fragment orb-frag"></span> <span id="orb-rt-back" class="fragment orb-frag"></span> <span id="orb-rt-newscroll" class="fragment orb-frag"></span> <span id="orb-rt-new-out" class="fragment orb-frag"></span> <span id="orb-rt-new-back" class="fragment orb-frag"></span></p>
 
 
 </section>
@@ -514,6 +514,9 @@
       const TABLE_W = COLS.length * CELL_W;
       const TABLE_X = PANEL.x + (PANEL.w - TABLE_W) / 2;
       const TABLE_Y = PANEL.y + 90;
+      // the data rows + the "more rows" ⋮ row scroll inside a clipped viewport that
+      // sits just below the (fixed) header row.
+      const VIEW_H = (NROWS + 1) * ROW_H;
 
       // hardcoded sample values (rolled once, stable) for the feature columns
       const DATA = [
@@ -527,12 +530,29 @@
 
       // predicted values that fill the .pred column (hardcoded, stable)
       const PRED_VALS = ['0.81', '0.34', '0.92', '0.45', '0.27', '0.68'];
+      // a fresh batch of rows waiting below the fold — each new batch must make the
+      // whole round trip again (wake the session, ship the rows, score, ship back).
+      const NEW_DATA = [
+        [7,  0.55, 1.2, 'C'],
+        [8,  0.23, 2.1, 'A'],
+        [9,  0.88, 0.6, 'B'],
+        [10, 0.49, 1.5, 'C'],
+        [11, 0.31, 0.9, 'A'],
+        [12, 0.70, 2.2, 'B'],
+      ];
+      const NEW_PRED_VALS = ['0.59', '0.41', '0.77', '0.52', '0.30', '0.64'];
 
       let built = false;
       let cardEl = null;            // the trained-model card (pulsed while "scoring")
-      const predSpans = [];         // inner spans of the .pred data cells (fade in)
+      let scrollerEl = null;        // inner scroller holding all body rows
+      let rpanelEl = null;          // session panel box (glows while it works)
+      let statusEl = null;          // session status pill ("running" / "idle")
+      let statusText = null;        // its text node
+      const predSpans = [];         // .pred spans for the first batch (fade in)
+      const predSpans2 = [];        // .pred spans for the freshly-scrolled batch
       // round-trip state machine:
-      //   phase 0 = nothing   1 = data sent to R + scoring   2 = prediction returned
+      //   0 = nothing  1 = data sent to R + scoring  2 = prediction returned
+      //   3 = new batch sent (session re-woken + scoring)  4 = new prediction returned
       // token invalidates pending chained callbacks when we change phase mid-flight.
       let rt = { phase: 0, els: [], token: 0, packet: null, gear: null, gearSpin: null };
 
@@ -550,6 +570,10 @@
           x: TABLE_X + col * CELL_W,
           y: TABLE_Y + (row === 0 ? 0 : HEAD_H + (row - 1) * ROW_H),
         };
+      }
+      // body cells live inside the scroller, so their coords are relative to it
+      function bodyCellXY(col, idx) {
+        return { x: col * CELL_W, y: idx * ROW_H };
       }
       function sizeCell(el, isHead) {
         el.style.width = CELL_W + 'px';
@@ -574,6 +598,7 @@
 
         // R-session panel (left, or nested inside the SF container in Posit)
         const rpanel = node('orb-rsession', RPANEL.x, RPANEL.y, stage);
+        rpanelEl = rpanel;
         rpanel.style.width = RPANEL.w + 'px';
         rpanel.style.height = RPANEL.h + 'px';
         const rheader = node('orb-rsession-header', RPANEL.x + 24, RPANEL.y + 22, stage);
@@ -585,10 +610,12 @@
         // a persistent "running" status: this approach needs a live R session
         const status = document.createElement('span');
         status.className = 'orb-status';
+        statusEl = status;
         const dot = document.createElement('span');
         dot.className = 'orb-status-dot';
         status.appendChild(dot);
-        status.appendChild(document.createTextNode('running'));
+        statusText = document.createTextNode('running');
+        status.appendChild(statusText);
         rheader.appendChild(rlogo);
         rheader.appendChild(rlabel);
         rheader.appendChild(status);
@@ -607,11 +634,25 @@
         card.appendChild(ct);
         card.appendChild(cc);
 
-        // Snowflake: a standalone panel (non-Posit) or the outer container (Posit)
+        // Snowflake: a standalone panel (non-Posit), or the outer container (Posit)
+        // where the data table gets its own nested "Database" box that mirrors the
+        // Workbench box — both live inside the Snowflake account (Database = where
+        // tables physically sit, the storage counterpart to the compute session).
         if (!POSIT) {
           const panel = node('orb-snowflake', PANEL.x, PANEL.y, stage);
           panel.style.width = PANEL.w + 'px';
           panel.style.height = PANEL.h + 'px';
+        } else {
+          const db = node('orb-database', PANEL.x, PANEL.y, stage);
+          db.style.width = PANEL.w + 'px';
+          db.style.height = PANEL.h + 'px';
+          const dbh = node('orb-database-header', PANEL.x + 24, PANEL.y + 22, stage);
+          const dbicon = document.createElement('span');
+          dbicon.className = 'orb-dbicon';
+          const dblabel = document.createElement('span');
+          dblabel.textContent = 'Database';
+          dbh.appendChild(dbicon);
+          dbh.appendChild(dblabel);
         }
         const hX = POSIT ? SF.x + 26 : PANEL.x + 24;
         const hY = POSIT ? SF.y + 16 : PANEL.y + 22;
@@ -624,7 +665,7 @@
         header.appendChild(flake);
         header.appendChild(hlabel);
 
-        // header row
+        // header row (fixed — stays put while the body scrolls beneath it)
         COLS.forEach((name, c) => {
           const { x, y } = cellXY(c, 0);
           const cls = 'orb-cell orb-head' + (c === PRED_COL ? ' orb-pred' : '');
@@ -632,31 +673,50 @@
           sizeCell(cell, true);
           cell.textContent = name;
         });
-        // data rows
-        for (let r = 0; r < NROWS; r++) {
+
+        // clipped viewport (below the header) + inner scroller for the body rows
+        const view = node('orb-tableview', TABLE_X, TABLE_Y + HEAD_H, stage);
+        view.style.width = TABLE_W + 'px';
+        view.style.height = VIEW_H + 'px';
+        const scroller = document.createElement('div');
+        scroller.className = 'orb-scroller';
+        view.appendChild(scroller);
+        scrollerEl = scroller;
+        anime.set(scroller, { translateY: 0 });   // never via the translate() shorthand
+
+        // one body row of cells; predList collects the .pred spans (start empty)
+        function buildRow(rowData, idx, predList) {
           for (let c = 0; c < COLS.length; c++) {
-            const { x, y } = cellXY(c, r + 1);
+            const { x, y } = bodyCellXY(c, idx);
             if (c === PRED_COL) {
-              const cell = node('orb-cell orb-pred', x, y, stage);
+              const cell = node('orb-cell orb-pred', x, y, scroller);
               sizeCell(cell, false);
               const span = document.createElement('span');
               span.style.opacity = 0;           // value fades in when filled
               cell.appendChild(span);
-              predSpans.push(span);
+              predList.push(span);
             } else {
-              const cell = node('orb-cell', x, y, stage);
+              const cell = node('orb-cell', x, y, scroller);
               sizeCell(cell, false);
-              cell.textContent = DATA[r][c];
+              cell.textContent = rowData[c];
             }
           }
         }
-        // "more rows" ellipsis row
-        COLS.forEach((name, c) => {
-          const { x, y } = cellXY(c, NROWS + 1);
-          const cell = node('orb-cell orb-dots', x, y, stage);
-          sizeCell(cell, false);
-          cell.textContent = '⋮';
-        });
+        function buildDots(idx) {
+          COLS.forEach((name, c) => {
+            const { x, y } = bodyCellXY(c, idx);
+            const cell = node('orb-cell orb-dots', x, y, scroller);
+            sizeCell(cell, false);
+            cell.textContent = '⋮';
+          });
+        }
+
+        // batch 1 (visible) + its trailing ⋮, then batch 2 (new data, below the
+        // fold) + its own ⋮ — exactly one page apart so a one-page scroll swaps them.
+        for (let r = 0; r < NROWS; r++) buildRow(DATA[r], r, predSpans);
+        buildDots(NROWS);
+        for (let r = 0; r < NROWS; r++) buildRow(NEW_DATA[r], NROWS + 1 + r, predSpans2);
+        buildDots(2 * NROWS + 1);
 
         // Posit: a dashed divider marking the runtime boundary the data crosses
         // inside Snowflake (vertical line horizontally; horizontal line vertically)
@@ -685,15 +745,19 @@
                      : TABLE_Y + HEAD_H + (NROWS + 1) * ROW_H + 7,
       };
       // the packet enters/exits the workflow card on the side facing the data
-      // (horizontal: in the top, out the bottom; vertical: in & out the bottom).
-      // packet is 130x52 in CSS, so 65 = half width.
+      // (horizontal: in the top, out the bottom; vertical: data in the LEFT edge,
+      // predictions out the RIGHT edge). packet is 130x52 in CSS, so 65/26 = half
+      // width/height. Each side has a staging point (sx,sy) and an into/out-of-card
+      // point (ix,iy / ox,oy); both axes are tweened so one set of code serves both
+      // orientations (the unchanged axis is a no-op).
       const CARD_CX = CARD.x + CARD.w / 2 - 65;
+      const CARD_CY = CARD.y + CARD.h / 2 - 26;     // packet centred on the card row
       const ENTER = VERT
-        ? { x: CARD_CX, aboveY: CARD.y + CARD.h + 55, intoY: CARD.y + CARD.h - 45 }
-        : { x: CARD_CX, aboveY: CARD.y - 65,          intoY: CARD.y + 18 };
+        ? { sx: CARD.x - 150, sy: CARD_CY,            ix: CARD.x - 30,          iy: CARD_CY }
+        : { sx: CARD_CX,      sy: CARD.y - 65,        ix: CARD_CX,              iy: CARD.y + 18 };
       const EXIT = VERT
-        ? { x: CARD_CX, insideY: CARD.y + CARD.h - 45, belowY: CARD.y + CARD.h + 55 }
-        : { x: CARD_CX, insideY: CARD.y + CARD.h - 72, belowY: CARD.y + CARD.h + 12 };
+        ? { sx: CARD.x + CARD.w - 110, sy: CARD_CY,            ox: CARD.x + CARD.w + 10, oy: CARD_CY }
+        : { sx: CARD_CX,               sy: CARD.y + CARD.h - 72, ox: CARD_CX,            oy: CARD.y + CARD.h + 12 };
       const FEATURE_W = (COLS.length - 1) * CELL_W;          // span of feature cols
       function featureRowY(r) { return TABLE_Y + HEAD_H + r * ROW_H; }
       // where the returning packet lands: centred over the .pred column / data rows
@@ -725,7 +789,13 @@
         anime.set(pkt, { translateX: x, translateY: y });
         return pkt;
       }
-      // ghost copies of each data row drop into the packet ("collecting" the data)
+      // ghost copies of each data row drop into the packet ("collecting" the data).
+      // ghosts are FEATURE_W wide and scale down around their own centre, so to land
+      // *inside* the 130x52 packet we target the packet's centre, not its left edge.
+      const GHOST_LAND = {
+        x: PKT.startX + 65 - FEATURE_W / 2,
+        y: PKT.startY + 26 - (ROW_H - 12) / 2,
+      };
       function collectRows() {
         const stage = document.getElementById('orb-stage');
         for (let r = 0; r < NROWS; r++) {
@@ -740,7 +810,31 @@
             targets: g,
             keyframes: [
               { opacity: 0.85, duration: 140 },                                   // light up the row
-              { translateX: PKT.startX, translateY: PKT.startY, scale: 0.25, opacity: 0, duration: 480 },
+              { translateX: GHOST_LAND.x, translateY: GHOST_LAND.y, scale: 0.25, opacity: 0, duration: 480 },
+            ],
+            delay: r * 70,
+            easing: 'easeInOutQuad',
+          });
+        }
+      }
+
+      // reverse of collectRows: ghosts grow back out of the packet onto each data
+      // row, as if the collected rows were being put back where they came from.
+      function releaseRows() {
+        const stage = document.getElementById('orb-stage');
+        for (let r = 0; r < NROWS; r++) {
+          const g = document.createElement('div');
+          g.className = 'orb-node orb-ghost';
+          g.style.width = FEATURE_W + 'px';
+          g.style.height = (ROW_H - 12) + 'px';
+          stage.appendChild(g);
+          rt.els.push(g);
+          anime.set(g, { translateX: GHOST_LAND.x, translateY: GHOST_LAND.y, scale: 0.25, opacity: 0 });
+          TM.anime({
+            targets: g,
+            keyframes: [
+              { translateX: TABLE_X, translateY: featureRowY(r) + 6, scale: 1, opacity: 0.85, duration: 480 },
+              { opacity: 0, duration: 140 },                                    // settle back into the row
             ],
             delay: r * 70,
             easing: 'easeInOutQuad',
@@ -774,17 +868,42 @@
         rt.gear = null; rt.gearSpin = null;
       }
 
-      function fillPred() {
-        predSpans.forEach((s, i) => { s.textContent = PRED_VALS[i]; });
+      function fillPred(spans, vals) {
+        spans.forEach((s, i) => { s.textContent = vals[i]; });
         TM.anime({
-          targets: predSpans, opacity: [0, 1],
+          targets: spans, opacity: [0, 1],
           duration: 350, delay: anime.stagger(80), easing: 'easeOutQuad',
         });
       }
-      function emptyPred() {
-        anime.remove(predSpans);
-        predSpans.forEach((s) => { s.style.opacity = 0; s.textContent = ''; });
+      function emptyPred(spans) {
+        anime.remove(spans);
+        spans.forEach((s) => { s.style.opacity = 0; s.textContent = ''; });
       }
+
+      // the round trip needs a live session: it sits idle between batches and must
+      // be woken (and kept warm) to score each new batch — the cost orbital avoids.
+      function goIdle() {
+        statusEl.classList.add('orb-status-off');
+        statusText.textContent = 'idle';
+        rpanelEl.classList.remove('orb-rsession-busy');
+        rpanelEl.classList.add('orb-rsession-idle');
+        if (cardEl) cardEl.classList.add('orb-card-idle');
+      }
+      function wakeUp() {
+        statusEl.classList.remove('orb-status-off');
+        statusText.textContent = 'running';
+        rpanelEl.classList.remove('orb-rsession-idle');
+        if (cardEl) cardEl.classList.remove('orb-card-idle');
+      }
+      // card + panel light up while the session is actively scoring
+      function showScoring() {
+        cardEl.classList.add('orb-scoring');
+        rpanelEl.classList.add('orb-rsession-busy');
+        showGear();
+      }
+      // one-page scroll that swaps batch 1 for the fresh batch below it
+      const SCROLL_Y = VIEW_H;
+
       function clearAll() {
         anime.remove(rt.els);
         rt.els.forEach((el) => el.remove());
@@ -792,7 +911,15 @@
         rt.packet = null;
         rt.gear = null; rt.gearSpin = null;
         if (cardEl) cardEl.classList.remove('orb-scoring');
-        emptyPred();
+        emptyPred(predSpans);
+        emptyPred(predSpans2);
+        if (scrollerEl) { anime.remove(scrollerEl); anime.set(scrollerEl, { translateY: 0 }); }
+        // back to the default "running" session (idle/wake states are phase-specific)
+        statusEl.classList.remove('orb-status-off');
+        statusText.textContent = 'running';
+        rpanelEl.classList.remove('orb-rsession-busy');
+        rpanelEl.classList.remove('orb-rsession-idle');
+        if (cardEl) cardEl.classList.remove('orb-card-idle');
       }
 
       // ---- phase transitions -------------------------------------------------
@@ -805,18 +932,30 @@
         if (phase === 0) return;
         if (phase === 1) {
           // data has entered the workflow and is being computed (no visible packet)
-          cardEl.classList.add('orb-scoring');
-          showGear();
-        } else if (phase === 2) {
-          predSpans.forEach((s, i) => { s.textContent = PRED_VALS[i]; s.style.opacity = 1; });
+          showScoring();
+          return;
+        }
+        // phases 2-5 all have the first batch already scored, session idle
+        predSpans.forEach((s, i) => { s.textContent = PRED_VALS[i]; s.style.opacity = 1; });
+        if (phase === 2) { goIdle(); return; }      // round trip done, session idles
+        // phases 3,4,5: scrolled down to the fresh batch
+        anime.set(scrollerEl, { translateY: -SCROLL_Y });
+        if (phase === 3) { goIdle(); return; }       // new rows revealed, still unscored
+        if (phase === 4) {                           // new batch sent, session re-woken
+          wakeUp();
+          showScoring();
+        } else {                                     // phase 5: new batch scored, idle
+          predSpans2.forEach((s, i) => { s.textContent = NEW_PRED_VALS[i]; s.style.opacity = 1; });
+          goIdle();
         }
       }
 
-      function animateOut() {          // phase 0 -> 1
-        rt.phase = 1;
+      // collect the currently-visible rows into a packet and ship it to the session,
+      // which lights up and starts scoring. (Geometry is the same for either batch:
+      // after the one-page scroll the new rows sit where the old ones were.)
+      function sendData(phase) {
+        rt.phase = phase;
         const gen = ++rt.token, live = () => rt.token === gen;
-        // packet appears as a staging tray below the table, then the rows collect
-        // into it before it departs for the R session
         const pkt = makePacket(PKT.startX, PKT.startY, 'data');
         pkt.style.opacity = 0;
         TM.anime({ targets: pkt, opacity: 1, scale: [0.8, 1], duration: 320, easing: 'easeOutBack' });
@@ -824,13 +963,13 @@
         const COLLECT_MS = (NROWS - 1) * 70 + 140 + 480 + 120;   // last ghost lands + beat
         TM.pause(COLLECT_MS, () => {
           if (!live()) return;
-          // travel to the R session, then enter the workflow at the top
-          fly(pkt, ENTER.x, ENTER.aboveY, 950, () => {
+          // travel to the session, then enter the workflow (top, or left edge in
+          // vertical decks)
+          fly(pkt, ENTER.sx, ENTER.sy, 950, () => {
             if (!live()) return;
-            cardEl.classList.add('orb-scoring');
-            showGear();
+            showScoring();
             TM.anime({
-              targets: pkt, translateY: ENTER.intoY, opacity: [1, 0],
+              targets: pkt, translateX: ENTER.ix, translateY: ENTER.iy, opacity: [1, 0],
               duration: 450, easing: 'easeInQuad',
               complete: () => {
                 if (!live()) return;
@@ -843,42 +982,149 @@
         });
       }
 
-      function animateBack() {         // phase 1 -> 2
-        rt.phase = 2;
+      // the prediction packet emerges from the workflow, travels back, fills the
+      // .pred column for that batch, and the session drops back to idle.
+      function returnData(phase, spans, vals) {
+        rt.phase = phase;
         const gen = ++rt.token, live = () => rt.token === gen;
         cardEl.classList.remove('orb-scoring');
         removeGear();
-        // prediction emerges from the bottom of the workflow, then travels back
-        const pkt = makePacket(EXIT.x, EXIT.insideY, '+ .pred');
+        const pkt = makePacket(EXIT.sx, EXIT.sy, '+ .pred');
         pkt.style.opacity = 0;
         TM.anime({
-          targets: pkt, translateY: EXIT.belowY, opacity: [0, 1],
+          targets: pkt, translateX: EXIT.ox, translateY: EXIT.oy, opacity: [0, 1],
           duration: 380, easing: 'easeOutQuad',
           complete: () => {
             if (!live()) return;
             fly(pkt, PRED_LAND.x, PRED_LAND.y, 950, () => {
               if (!live()) return;
               TM.anime({ targets: pkt, opacity: 0, duration: 250, easing: 'easeOutQuad' });
-              fillPred();
+              fillPred(spans, vals);
+              goIdle();      // work done -> the session idles until the next batch
             });
           },
         });
       }
 
+      function animateOut() { sendData(1); }                         // phase 0 -> 1
+      function animateBack() { returnData(2, predSpans, PRED_VALS); } // phase 1 -> 2
+
+      function animateNewScroll() {    // phase 2 -> 3
+        rt.phase = 3;
+        // scroll down to a fresh batch of (still unscored) rows; session stays idle
+        anime.remove(scrollerEl);
+        TM.anime({ targets: scrollerEl, translateY: -SCROLL_Y, duration: 900, easing: 'easeInOutCubic' });
+      }
+      function animateNewOut() {       // phase 3 -> 4
+        // wake the idle session back up and make the same round trip again
+        wakeUp();
+        sendData(4);
+      }
+      function animateNewBack() {      // phase 4 -> 5
+        returnData(5, predSpans2, NEW_PRED_VALS);
+      }
+
+      // ---- reverse transitions: each mirrors the matching forward step so a single
+      // back-nav plays the animation backwards instead of snapping. -------------
+      // reverse of sendData: scoring stops, a data packet leaves the workflow and
+      // travels back to the table, where the collected rows are released again.
+      // idleAtEnd matches the target phase's session state (running vs. idle).
+      function reverseSend(phase, idleAtEnd) {
+        rt.phase = phase;
+        const gen = ++rt.token, live = () => rt.token === gen;
+        cardEl.classList.remove('orb-scoring');
+        removeGear();
+        rpanelEl.classList.remove('orb-rsession-busy');
+        const pkt = makePacket(ENTER.ix, ENTER.iy, 'data');
+        pkt.style.opacity = 0;
+        TM.anime({
+          targets: pkt, translateX: ENTER.sx, translateY: ENTER.sy, opacity: [0, 1],
+          duration: 450, easing: 'easeOutQuad',
+          complete: () => {
+            if (!live()) return;
+            fly(pkt, PKT.startX, PKT.startY, 950, () => {
+              if (!live()) return;
+              releaseRows();
+              TM.anime({
+                targets: pkt, opacity: 0, scale: 0.8, duration: 320, easing: 'easeInQuad',
+                complete: () => {
+                  if (!live()) return;
+                  pkt.remove();
+                  const i = rt.els.indexOf(pkt); if (i >= 0) rt.els.splice(i, 1);
+                  rt.packet = null;
+                  if (idleAtEnd) goIdle();
+                },
+              });
+            });
+          },
+        });
+      }
+
+      // reverse of returnData: predictions un-fill, the prediction packet lifts off
+      // the table and travels back into the workflow, which resumes scoring.
+      function reverseReturn(phase, spans) {
+        rt.phase = phase;
+        const gen = ++rt.token, live = () => rt.token === gen;
+        anime.remove(spans);
+        TM.anime({
+          targets: spans, opacity: [1, 0], duration: 300, easing: 'easeInQuad',
+          complete: () => { if (live()) spans.forEach((s) => { s.textContent = ''; }); },
+        });
+        const pkt = makePacket(PRED_LAND.x, PRED_LAND.y, '+ .pred');
+        pkt.style.opacity = 0;
+        TM.anime({ targets: pkt, opacity: [0, 1], duration: 250, easing: 'easeOutQuad' });
+        wakeUp();
+        fly(pkt, EXIT.ox, EXIT.oy, 950, () => {
+          if (!live()) return;
+          TM.anime({
+            targets: pkt, translateX: EXIT.sx, translateY: EXIT.sy, opacity: [1, 0],
+            duration: 380, easing: 'easeInQuad',
+            complete: () => {
+              if (!live()) return;
+              pkt.remove();
+              const i = rt.els.indexOf(pkt); if (i >= 0) rt.els.splice(i, 1);
+              rt.packet = null;
+              showScoring();        // back to "computing" — the session is busy again
+            },
+          });
+        });
+      }
+
+      function reverseNewScroll() {    // phase 3 -> 2
+        rt.phase = 2;
+        // scroll back up to the first (already-scored) batch; session stays idle
+        anime.remove(scrollerEl);
+        TM.anime({ targets: scrollerEl, translateY: 0, duration: 900, easing: 'easeInOutCubic' });
+      }
+
       function render(stage) {
         if (!build()) return;
-        const target = stage >= 2 ? 2 : (stage >= 1 ? 1 : 0);
+        const target = stage >= 5 ? 5
+                     : stage >= 4 ? 4
+                     : stage >= 3 ? 3
+                     : stage >= 2 ? 2
+                     : stage >= 1 ? 1 : 0;
         if (target === rt.phase) return;
         if (target - rt.phase === 1) {     // single forward step -> animate
-          if (target === 1) animateOut(); else animateBack();
-        } else {                            // back-nav or multi-step jump -> snap
+          if (target === 1) animateOut();
+          else if (target === 2) animateBack();
+          else if (target === 3) animateNewScroll();
+          else if (target === 4) animateNewOut();
+          else animateNewBack();
+        } else if (rt.phase - target === 1) { // single back step -> reverse animate
+          if (rt.phase === 1) reverseSend(0, false);        // session was "running"
+          else if (rt.phase === 2) reverseReturn(1, predSpans);
+          else if (rt.phase === 3) reverseNewScroll();
+          else if (rt.phase === 4) reverseSend(3, true);    // back to idle, unscored
+          else reverseReturn(4, predSpans2);
+        } else {                            // multi-step jump -> snap
           snapTo(target);
         }
       }
 
       TM.gate({
         markerClass: 'orb-slide',
-        fragmentIds: ['orb-rt-out', 'orb-rt-back'],
+        fragmentIds: ['orb-rt-out', 'orb-rt-back', 'orb-rt-newscroll', 'orb-rt-new-out', 'orb-rt-new-back'],
         render,
       });
     })();

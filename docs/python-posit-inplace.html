@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-ad1c32966bd20400d328c584311105aa.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-24291e0789340407b7ec71c30a427ffd.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -157,7 +157,7 @@
 
 </div>
 </div>
-<p><span id="orb-compile" class="fragment orb-frag"></span> <span id="orb-embed" class="fragment orb-frag"></span> <span id="orb-run" class="fragment orb-frag"></span></p>
+<p><span id="orb-compile" class="fragment orb-frag"></span> <span id="orb-embed" class="fragment orb-frag"></span> <span id="orb-run" class="fragment orb-frag"></span> <span id="orb-newdata" class="fragment orb-frag"></span> <span id="orb-newpred" class="fragment orb-frag"></span></p>
 
 
 </section>
@@ -513,7 +513,10 @@
       const NROWS = 6;
       const TABLE_W = COLS.length * CELL_W;
       const TABLE_X = PANEL.x + (PANEL.w - TABLE_W) / 2;
-      const TABLE_Y = PANEL.y + 90;
+      const TABLE_Y = PANEL.y + (VERT ? 95 : 110);
+      // the data rows + the "more rows" ⋮ row scroll inside a clipped viewport that
+      // sits just below the (fixed) header row.
+      const VIEW_H = (NROWS + 1) * ROW_H;
 
       const DATA = [
         [1, 0.42, 1.7, 'A'],
@@ -524,13 +527,26 @@
         [6, 0.74, 1.9, 'A'],
       ];
       const PRED_VALS = ['0.81', '0.34', '0.92', '0.45', '0.27', '0.68'];
+      // a fresh batch of rows waiting below the fold — the same standing query
+      // scores them once the table scrolls down to reveal them.
+      const NEW_DATA = [
+        [7,  0.55, 1.2, 'C'],
+        [8,  0.23, 2.1, 'A'],
+        [9,  0.88, 0.6, 'B'],
+        [10, 0.49, 1.5, 'C'],
+        [11, 0.31, 0.9, 'A'],
+        [12, 0.70, 2.2, 'B'],
+      ];
+      const NEW_PRED_VALS = ['0.59', '0.41', '0.77', '0.52', '0.30', '0.64'];
 
       let built = false;
       let cardEl = null;
       let rpanelEl = null;          // R-session panel (wound down once SQL is in SF)
       let statusEl = null;          // R-session "running" indicator (greyed later)
       let statusText = null;        // its text node ("running" / "not needed")
-      const predSpans = [];
+      let scrollerEl = null;        // inner scroller holding all body rows
+      const predSpans = [];         // .pred spans for the first batch
+      const predSpans2 = [];        // .pred spans for the freshly-scrolled batch
       // phase machine: 0 = model card | 1 = compiled to SQL chip (more added later)
       let ip = { phase: 0, els: [], token: 0, chip: null };
 
@@ -546,6 +562,11 @@
           x: TABLE_X + col * CELL_W,
           y: TABLE_Y + (row === 0 ? 0 : HEAD_H + (row - 1) * ROW_H),
         };
+      }
+      // body cells live inside the scroller, so their coords are relative to it:
+      // column across, row index (0-based) down.
+      function bodyCellXY(col, idx) {
+        return { x: col * CELL_W, y: idx * ROW_H };
       }
       function sizeCell(el, isHead) {
         el.style.width = CELL_W + 'px';
@@ -611,11 +632,25 @@
         card.appendChild(ct);
         card.appendChild(cc);
 
-        // Snowflake: a standalone panel (non-Posit) or the outer container (Posit)
+        // Snowflake: a standalone panel (non-Posit), or the outer container (Posit)
+        // where the data table gets its own nested "Database" box that mirrors the
+        // Workbench box — both live inside the Snowflake account (Database = where
+        // tables physically sit, the storage counterpart to the compute session).
         if (!POSIT) {
           const panel = node('orb-snowflake', PANEL.x, PANEL.y, stage);
           panel.style.width = PANEL.w + 'px';
           panel.style.height = PANEL.h + 'px';
+        } else {
+          const db = node('orb-database', PANEL.x, PANEL.y, stage);
+          db.style.width = PANEL.w + 'px';
+          db.style.height = PANEL.h + 'px';
+          const dbh = node('orb-database-header', PANEL.x + 24, PANEL.y + 22, stage);
+          const dbicon = document.createElement('span');
+          dbicon.className = 'orb-dbicon';
+          const dblabel = document.createElement('span');
+          dblabel.textContent = 'Database';
+          dbh.appendChild(dbicon);
+          dbh.appendChild(dblabel);
         }
         const hX = POSIT ? SF.x + 26 : PANEL.x + 24;
         const hY = POSIT ? SF.y + 16 : PANEL.y + 22;
@@ -628,7 +663,7 @@
         header.appendChild(flake);
         header.appendChild(hlabel);
 
-        // header row
+        // header row (fixed — stays put while the body scrolls beneath it)
         COLS.forEach((name, c) => {
           const { x, y } = cellXY(c, 0);
           const cls = 'orb-cell orb-head' + (c === PRED_COL ? ' orb-pred' : '');
@@ -636,31 +671,50 @@
           sizeCell(cell, true);
           cell.textContent = name;
         });
-        // data rows
-        for (let r = 0; r < NROWS; r++) {
+
+        // clipped viewport (below the header) + inner scroller for the body rows
+        const view = node('orb-tableview', TABLE_X, TABLE_Y + HEAD_H, stage);
+        view.style.width = TABLE_W + 'px';
+        view.style.height = VIEW_H + 'px';
+        const scroller = document.createElement('div');
+        scroller.className = 'orb-scroller';
+        view.appendChild(scroller);
+        scrollerEl = scroller;
+        anime.set(scroller, { translateY: 0 });   // never via the translate() shorthand
+
+        // one body row of cells; predList collects the .pred spans (start empty)
+        function buildRow(rowData, idx, predList) {
           for (let c = 0; c < COLS.length; c++) {
-            const { x, y } = cellXY(c, r + 1);
+            const { x, y } = bodyCellXY(c, idx);
             if (c === PRED_COL) {
-              const cell = node('orb-cell orb-pred', x, y, stage);
+              const cell = node('orb-cell orb-pred', x, y, scroller);
               sizeCell(cell, false);
               const span = document.createElement('span');
               span.style.opacity = 0;
               cell.appendChild(span);
-              predSpans.push(span);
+              predList.push(span);
             } else {
-              const cell = node('orb-cell', x, y, stage);
+              const cell = node('orb-cell', x, y, scroller);
               sizeCell(cell, false);
-              cell.textContent = DATA[r][c];
+              cell.textContent = rowData[c];
             }
           }
         }
-        // "more rows" ellipsis row
-        COLS.forEach((name, c) => {
-          const { x, y } = cellXY(c, NROWS + 1);
-          const cell = node('orb-cell orb-dots', x, y, stage);
-          sizeCell(cell, false);
-          cell.textContent = '⋮';
-        });
+        function buildDots(idx) {
+          COLS.forEach((name, c) => {
+            const { x, y } = bodyCellXY(c, idx);
+            const cell = node('orb-cell orb-dots', x, y, scroller);
+            sizeCell(cell, false);
+            cell.textContent = '⋮';
+          });
+        }
+
+        // batch 1 (visible) + its trailing ⋮, then batch 2 (new data, below the
+        // fold) + its own ⋮ — exactly one page apart so a one-page scroll swaps them.
+        for (let r = 0; r < NROWS; r++) buildRow(DATA[r], r, predSpans);
+        buildDots(NROWS);
+        for (let r = 0; r < NROWS; r++) buildRow(NEW_DATA[r], NROWS + 1 + r, predSpans2);
+        buildDots(2 * NROWS + 1);
 
         // Posit: dashed divider marking the runtime boundary inside Snowflake
         if (POSIT) {
@@ -702,16 +756,24 @@
         return el;
       }
 
-      function makeChip(x, y) {
+      function makeChip(x, y, scale) {
         const chip = makeAt('orb-sql', x, y);
         chip.innerHTML = SQL_HTML;
+        if (scale != null) anime.set(chip, { scale });
         ip.chip = chip;
         return chip;
       }
 
-      // docked position inside the Snowflake panel (centred over the table; chip is
-      // ~298px wide incl. padding, so half = 149)
-      const CHIP_S = { x: TABLE_X + TABLE_W / 2 - 149, y: TABLE_Y + 36 };
+      // docked position: the compiled SQL tucks into the top-right corner of the
+      // Snowflake/Database box and *stays* there — it becomes a standing view that
+      // is re-run to generate predictions (rather than dissolving into the table).
+      // The chip is ~298px wide (half = 149); scale it down to sit in the corner.
+      const CHIP_DOCK_SCALE = 0.7;
+      const CHIP_DOCK_MARGIN = 30;   // gap from the panel's right edge
+      const CHIP_S = {
+        x: PANEL.x + PANEL.w - CHIP_DOCK_MARGIN - 149 * CHIP_DOCK_SCALE - 149,
+        y: PANEL.y + 8,
+      };
 
       // once the SQL is in Snowflake, the R session has nothing left to do
       function windDownR() {
@@ -724,13 +786,26 @@
         statusText.textContent = 'running';
         rpanelEl.classList.remove('orb-rsession-down');
       }
-      function fillPred() {
-        predSpans.forEach((s, i) => { s.textContent = PRED_VALS[i]; });
+      function fillPred(spans, vals) {
+        spans.forEach((s, i) => { s.textContent = vals[i]; });
         TM.anime({
-          targets: predSpans, opacity: [0, 1],
+          targets: spans, opacity: [0, 1],
           duration: 350, delay: anime.stagger(80), easing: 'easeOutQuad',
         });
       }
+      // the standing query lights up and gives a quick pulse, as if executed
+      function pulseChip() {
+        const chip = ip.chip;
+        if (!chip) return;
+        anime.remove(chip);
+        chip.classList.add('orb-sql-active');
+        TM.anime({
+          targets: chip, scale: CHIP_DOCK_SCALE * 1.07,
+          duration: 240, easing: 'easeOutQuad', direction: 'alternate', loop: 2,
+        });
+      }
+      // one-page scroll that swaps batch 1 for the fresh batch below it
+      const SCROLL_Y = VIEW_H;
 
       function clearAll() {
         ip.token++;
@@ -741,6 +816,9 @@
         if (cardEl) { anime.remove(cardEl); cardEl.style.opacity = 1; }
         anime.remove(predSpans);
         predSpans.forEach((s) => { s.style.opacity = 0; s.textContent = ''; });
+        anime.remove(predSpans2);
+        predSpans2.forEach((s) => { s.style.opacity = 0; s.textContent = ''; });
+        if (scrollerEl) { anime.remove(scrollerEl); anime.set(scrollerEl, { translateY: 0 }); }
         restoreR();
       }
 
@@ -750,10 +828,18 @@
         if (phase === 0) return;
         if (phase >= 1) cardEl.style.opacity = 0;   // model is now the SQL chip
         if (phase === 1) makeChip(CHIP.x, CHIP.y);
-        else if (phase === 2) { makeChip(CHIP_S.x, CHIP_S.y); windDownR(); }
-        else if (phase === 3) {                      // ran in place: no chip, filled
+        else if (phase === 2) { makeChip(CHIP_S.x, CHIP_S.y, CHIP_DOCK_SCALE); windDownR(); }
+        else {                                       // SQL still docked in the corner,
+          const chip = makeChip(CHIP_S.x, CHIP_S.y, CHIP_DOCK_SCALE);  // re-run to fill
+          chip.classList.add('orb-sql-active');
           predSpans.forEach((s, i) => { s.textContent = PRED_VALS[i]; s.style.opacity = 1; });
           windDownR();
+          if (phase >= 4) {                           // scrolled to a fresh batch
+            anime.set(scrollerEl, { translateY: -SCROLL_Y });
+          }
+          if (phase === 5) {                          // ...and the new batch is scored
+            predSpans2.forEach((s, i) => { s.textContent = NEW_PRED_VALS[i]; s.style.opacity = 1; });
+          }
         }
       }
 
@@ -785,10 +871,10 @@
         const gen = ++ip.token, live = () => ip.token === gen;
         const chip = ip.chip || makeChip(CHIP.x, CHIP.y);
         anime.remove(chip);                // cancel any residual tween
-        // the query travels into Snowflake and docks over the table
+        // the query travels into Snowflake and tucks into the top-right corner
         TM.anime({
           targets: chip,
-          translateX: CHIP_S.x, translateY: CHIP_S.y, scale: 0.92,
+          translateX: CHIP_S.x, translateY: CHIP_S.y, scale: CHIP_DOCK_SCALE,
           duration: 850, easing: 'easeInOutCubic',
         });
         // as the SQL leaves for Snowflake, the R session winds down
@@ -798,12 +884,91 @@
       function animateFill() {             // phase 2 -> 3
         ip.phase = 3;
         const gen = ++ip.token, live = () => ip.token === gen;
+        // the docked query stays put and "runs": it lights up and gives a quick
+        // pulse, as if being executed to generate the predictions in the table
+        pulseChip();
+        // predictions appear in place — no round-trip (R session already wound down)
+        TM.pause(280, () => { if (live()) fillPred(predSpans, PRED_VALS); });
+      }
+
+      function animateScroll() {           // phase 3 -> 4
+        ip.phase = 4;
+        // scroll the table down one page: the scored rows slide up and out, a fresh
+        // batch of (still unscored) rows slides into view from below.
+        anime.remove(scrollerEl);
+        TM.anime({
+          targets: scrollerEl, translateY: -SCROLL_Y,
+          duration: 900, easing: 'easeInOutCubic',
+        });
+      }
+
+      function animateNewFill() {          // phase 4 -> 5
+        ip.phase = 5;
+        const gen = ++ip.token, live = () => ip.token === gen;
+        // the same standing query runs again, scoring the freshly-scrolled rows
+        pulseChip();
+        TM.pause(280, () => { if (live()) fillPred(predSpans2, NEW_PRED_VALS); });
+      }
+
+      // ---- reverse transitions: each mirrors the matching forward step so a single
+      // back-nav plays the animation backwards instead of snapping. -------------
+      function reverseNewFill() {            // phase 5 -> 4
+        ip.phase = 4;
+        const gen = ++ip.token, live = () => ip.token === gen;
+        // the freshly-scored predictions un-fill (the standing query "un-runs")
+        anime.remove(predSpans2);
+        TM.anime({
+          targets: predSpans2, opacity: [1, 0], duration: 300, easing: 'easeInQuad',
+          complete: () => { if (live()) predSpans2.forEach((s) => { s.textContent = ''; }); },
+        });
+      }
+
+      function reverseScroll() {             // phase 4 -> 3
+        ip.phase = 3;
+        // scroll the fresh batch back down out of view, the scored rows return
+        anime.remove(scrollerEl);
+        TM.anime({ targets: scrollerEl, translateY: 0, duration: 900, easing: 'easeInOutCubic' });
+      }
+
+      function reverseFill() {               // phase 3 -> 2
+        ip.phase = 2;
+        const gen = ++ip.token, live = () => ip.token === gen;
+        // predictions un-fill and the docked query goes quiet again
+        anime.remove(predSpans);
+        TM.anime({
+          targets: predSpans, opacity: [1, 0], duration: 300, easing: 'easeInQuad',
+          complete: () => { if (live()) predSpans.forEach((s) => { s.textContent = ''; }); },
+        });
+        if (ip.chip) ip.chip.classList.remove('orb-sql-active');
+      }
+
+      function reverseDock() {               // phase 2 -> 1
+        ip.phase = 1;
+        const gen = ++ip.token, live = () => ip.token === gen;
+        const chip = ip.chip || makeChip(CHIP_S.x, CHIP_S.y, CHIP_DOCK_SCALE);
+        anime.remove(chip);
+        // the query travels back out of the corner to its full-size spot on the card
+        TM.anime({
+          targets: chip, translateX: CHIP.x, translateY: CHIP.y, scale: 1,
+          duration: 850, easing: 'easeInOutCubic',
+        });
+        // as the SQL leaves Snowflake again the R session comes back up
+        TM.pause(420, () => { if (live()) restoreR(); });
+      }
+
+      function reverseCompile() {            // phase 1 -> 0
+        ip.phase = 0;
+        const gen = ++ip.token, live = () => ip.token === gen;
+        // the orbital() lens drops back in over the (still hidden) card
+        const pill = makeAt('orb-orbital', PILL.x, PILL.y);
+        pill.textContent = 'orbital()';
+        pill.style.opacity = 0;
+        TM.anime({ targets: pill, opacity: 1, scale: [0.7, 1], duration: 260, easing: 'easeOutBack' });
+        // the compiled SQL chip scales back out as the model card fades back in
         const chip = ip.chip;
-        // the docked query "runs" and dissolves into the table
         if (chip) {
-          anime.remove(chip);
           TM.anime({
-            targets: chip, opacity: 0, scale: 0.8, duration: 420, easing: 'easeInQuad',
+            targets: chip, opacity: 0, scale: 0.82, duration: 380, easing: 'easeInQuad',
             complete: () => {
               if (!live()) return;
               chip.remove();
@@ -812,26 +977,50 @@
             },
           });
         }
-        // predictions appear in place — no round-trip (R session already wound down)
-        TM.pause(280, () => { if (live()) fillPred(); });
+        anime.remove(cardEl);
+        TM.anime({ targets: cardEl, opacity: 1, duration: 380, delay: 200, easing: 'easeOutQuad' });
+        // the lens has done its job — fade it back out and clean it up
+        TM.pause(900, () => {
+          if (!live()) return;
+          TM.anime({
+            targets: pill, opacity: 0, duration: 260, easing: 'easeInQuad',
+            complete: () => {
+              if (!live()) return;
+              pill.remove();
+              const i = ip.els.indexOf(pill); if (i >= 0) ip.els.splice(i, 1);
+            },
+          });
+        });
       }
 
       function render(stage) {
         if (!build()) return;
-        const target = stage >= 3 ? 3 : (stage >= 2 ? 2 : (stage >= 1 ? 1 : 0));
+        const target = stage >= 5 ? 5
+                     : stage >= 4 ? 4
+                     : stage >= 3 ? 3
+                     : stage >= 2 ? 2
+                     : stage >= 1 ? 1 : 0;
         if (target === ip.phase) return;
         if (target - ip.phase === 1) {       // single forward step -> animate
           if (target === 1) animateCompile();
           else if (target === 2) animateDock();
-          else animateFill();
-        } else {                             // back-nav / multi-step jump -> snap
+          else if (target === 3) animateFill();
+          else if (target === 4) animateScroll();
+          else animateNewFill();
+        } else if (ip.phase - target === 1) { // single back step -> reverse animate
+          if (ip.phase === 1) reverseCompile();
+          else if (ip.phase === 2) reverseDock();
+          else if (ip.phase === 3) reverseFill();
+          else if (ip.phase === 4) reverseScroll();
+          else reverseNewFill();
+        } else {                             // multi-step jump -> snap
           snapTo(target);
         }
       }
 
       TM.gate({
         markerClass: 'orb-slide',
-        fragmentIds: ['orb-compile', 'orb-embed', 'orb-run'],
+        fragmentIds: ['orb-compile', 'orb-embed', 'orb-run', 'orb-newdata', 'orb-newpred'],
         render,
       });
     })();
