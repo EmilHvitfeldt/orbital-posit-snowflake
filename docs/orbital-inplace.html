@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-24291e0789340407b7ec71c30a427ffd.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-a9caa901d38deccaee61657e215f01b7.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -123,7 +123,7 @@
       margin-right: 0; 
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+  <script src="js/anime.min.js"></script>
 </head>
 <body class="quarto-light">
   <div class="reveal">
@@ -148,9 +148,6 @@
 <section id="section" class="slide level2 orb-slide">
 <h2></h2>
 <div class="orb-stage-wrap">
-<div id="orb-title" class="orb-title">
-
-</div>
 <div id="orb-stage">
 
 </div>
@@ -466,23 +463,39 @@
     };
     </script>
     <script>
-    /* ---- orbital + Snowflake: predictions IN PLACE ----
-     * Marker slide: .orb-slide   Stage container: #orb-stage  (1180 x 600)
-     * render(stage) is idempotent (stage = number of visible gating fragments).
+    /* ---- orbital + Snowflake: shared build / layout base ----
+     * The two animation modules (orbital-roundtrip, orbital-inplace) share an
+     * identical starting frame, the same layout maths, the same data table, and the
+     * same DOM-construction helpers. All of that lives here so a geometry change is
+     * made once. Each module only owns its own phase choreography.
      *
-     * The contrast to orbital-roundtrip: instead of shipping data out to a live
-     * session and back, orbital() compiles the model to SQL that runs in place
-     * inside Snowflake — so the R session is no longer needed.
+     * ORB.build(opts) reads the window.ORB_* knobs, lays out and builds the static
+     * stage 0 actors, and returns a context object with every constant, helper, and
+     * element reference a module needs. It is idempotent: the DOM is built once and
+     * the same context is returned on every call (the stage may not exist yet when
+     * the module script first runs, so modules call build() lazily inside render()).
      *
-     * Stage 0 (this build): the shared starting frame —
-     *   - R session (left, "running") with the trained-model card
-     *   - Snowflake panel (right) with a data table whose .pred column is empty.
+     * opts.groupSession: when true the session panel/header/card are wrapped in a
+     *   single .orb-rgroup so they can wind down (dim) as one (in-place module); when
+     *   false they sit directly on the stage and are dimmed individually (round-trip
+     *   module, which has distinct busy/idle states). ctx.rpanelEl is the element a
+     *   module toggles state classes on — the group, or the panel box, accordingly.
      */
-    (function () {
+    window.ORB = window.ORB || {};
+
+    ORB.build = function (opts) {
+      opts = opts || {};
+      const groupSession = !!opts.groupSession;
+
+      const stage = document.getElementById('orb-stage');
+      if (!stage) return null;
+      if (ORB._ctx) return ORB._ctx;   // already built — hand back the same context
+
       const BLUE = window.ORB_SNOWFLAKE || '#29B5E8';
       const RBLUE = window.ORB_RSESSION || '#276DC3';
       const MODEL_LABEL = window.ORB_MODEL_LABEL || 'workflow()';
-      // Posit framing: the session runs *inside* Snowflake (Posit Team Native App).
+      // Posit framing: the session runs *inside* Snowflake (Posit Team Native App in
+      // Snowpark Container Services), so the data never leaves the warehouse.
       const POSIT = !!window.ORB_POSIT;
       const SESSION_LABEL = window.ORB_SESSION_LABEL || (POSIT ? 'Posit Workbench' : 'R session');
       const SESSION_LOGO = window.ORB_SESSION_LOGO || 'R';
@@ -504,25 +517,28 @@
       // ---- trained-model card, centred inside the session panel ----
       const CARD = { w: 230, h: 150 };
       CARD.x = RPANEL.x + (RPANEL.w - CARD.w) / 2;
-      CARD.y = RPANEL.y + 90 + (VERT ? 0 : 60);
+      CARD.y = RPANEL.y + 90 + (VERT ? 0 : 60);   // below the header
 
       // ---- PANEL drives the data-table position (own panel / SF region) ----
       const PANEL = VERT
         ? (POSIT ? { x: 90,  y: 560, w: 640, h: 430 } : { x: 180, y: 600, w: 460, h: 430 })
         : (POSIT ? { x: 620, y: 62,  w: 470, h: 470 } : { x: 700, y: 65,  w: 440, h: 470 });
 
-      // ---- data table inside the panel (flat) ----
+      // ---- data table inside the panel (flat, recipe-style) ----
       const COLS = ['id', 'x1', 'x2', 'x3', '.pred'];
       const PRED_COL = COLS.length - 1;
-      const CELL_W = 72, HEAD_H = 40, ROW_H = 40;
-      const NROWS = 6;
+      const CELL_W = 72, HEAD_H = 40, ROW_H = 40;        // contiguous columns
+      const NROWS = 6;                                   // data rows (excl. header)
       const TABLE_W = COLS.length * CELL_W;
       const TABLE_X = PANEL.x + (PANEL.w - TABLE_W) / 2;
-      const TABLE_Y = PANEL.y + (VERT ? 95 : 110);
+      // single shared offset below the panel top — both modules use the same value
+      // so a deck's table sits at the same height whichever animation it runs.
+      const TABLE_Y = PANEL.y + 90;
       // the data rows + the "more rows" ⋮ row scroll inside a clipped viewport that
       // sits just below the (fixed) header row.
       const VIEW_H = (NROWS + 1) * ROW_H;
 
+      // hardcoded sample values (rolled once, stable) for the feature columns
       const DATA = [
         [1, 0.42, 1.7, 'A'],
         [2, 0.91, 0.3, 'B'],
@@ -531,9 +547,9 @@
         [5, 0.37, 0.8, 'B'],
         [6, 0.74, 1.9, 'A'],
       ];
+      // predicted values that fill the .pred column (hardcoded, stable)
       const PRED_VALS = ['0.81', '0.34', '0.92', '0.45', '0.27', '0.68'];
-      // a fresh batch of rows waiting below the fold — the same standing query
-      // scores them once the table scrolls down to reveal them.
+      // a fresh batch of rows waiting below the fold
       const NEW_DATA = [
         [7,  0.55, 1.2, 'C'],
         [8,  0.23, 2.1, 'A'],
@@ -544,17 +560,7 @@
       ];
       const NEW_PRED_VALS = ['0.59', '0.41', '0.77', '0.52', '0.30', '0.64'];
 
-      let built = false;
-      let cardEl = null;
-      let rpanelEl = null;          // R-session panel (wound down once SQL is in SF)
-      let statusEl = null;          // R-session "running" indicator (greyed later)
-      let statusText = null;        // its text node ("running" / "not needed")
-      let scrollerEl = null;        // inner scroller holding all body rows
-      const predSpans = [];         // .pred spans for the first batch
-      const predSpans2 = [];        // .pred spans for the freshly-scrolled batch
-      // phase machine: 0 = model card | 1 = compiled to SQL chip (more added later)
-      let ip = { phase: 0, els: [], token: 0, chip: null };
-
+      // ---- helpers (shared) -------------------------------------------------
       function node(cls, x, y, parent) {
         const el = document.createElement('div');
         el.className = 'orb-node ' + cls;
@@ -562,14 +568,14 @@
         parent.appendChild(el);
         return el;
       }
+      // row 0 = header; data rows 1..NROWS; dots row at NROWS+1
       function cellXY(col, row) {
         return {
           x: TABLE_X + col * CELL_W,
           y: TABLE_Y + (row === 0 ? 0 : HEAD_H + (row - 1) * ROW_H),
         };
       }
-      // body cells live inside the scroller, so their coords are relative to it:
-      // column across, row index (0-based) down.
+      // body cells live inside the scroller, so their coords are relative to it
       function bodyCellXY(col, idx) {
         return { x: col * CELL_W, y: idx * ROW_H };
       }
@@ -577,176 +583,246 @@
         el.style.width = CELL_W + 'px';
         el.style.height = (isHead ? HEAD_H : ROW_H) + 'px';
       }
+      // y of feature row r within the (unscrolled) body
+      function featureRowY(r) { return TABLE_Y + HEAD_H + r * ROW_H; }
 
-      function build() {
-        const stage = document.getElementById('orb-stage');
-        if (!stage || built) return !!stage;
-        built = true;
-        stage.style.width = STAGE_W + 'px';
-        stage.style.height = STAGE_H + 'px';
-        stage.style.setProperty('--orb-blue', BLUE);
-        stage.style.setProperty('--orb-rblue', RBLUE);
+      // ---- build the static stage 0 actors ----------------------------------
+      stage.style.width = STAGE_W + 'px';
+      stage.style.height = STAGE_H + 'px';
+      stage.style.setProperty('--orb-blue', BLUE);
+      stage.style.setProperty('--orb-rblue', RBLUE);
 
-        // Posit framing: outer Snowflake container behind everything
-        if (POSIT) {
-          const sf = node('orb-snowflake', SF.x, SF.y, stage);
-          sf.style.width = SF.w + 'px';
-          sf.style.height = SF.h + 'px';
-        }
-
-        // R-session group: panel + header + card live together so they wind down
-        // (dim) as one. The group spans the whole stage; children keep stage coords.
-        const rgroup = document.createElement('div');
-        rgroup.className = 'orb-rgroup';
-        stage.appendChild(rgroup);
-        rpanelEl = rgroup;
-
-        // R-session panel (left)
-        const rpanel = node('orb-rsession', RPANEL.x, RPANEL.y, rgroup);
-        rpanel.style.width = RPANEL.w + 'px';
-        rpanel.style.height = RPANEL.h + 'px';
-        const rheader = node('orb-rsession-header', RPANEL.x + 24, RPANEL.y + 22, rgroup);
-        const rlogo = document.createElement('span');
-        rlogo.className = 'orb-rlogo';
-        rlogo.textContent = SESSION_LOGO;
-        const rlabel = document.createElement('span');
-        rlabel.textContent = SESSION_LABEL;
-        const status = document.createElement('span');
-        status.className = 'orb-status';
-        const dot = document.createElement('span');
-        dot.className = 'orb-status-dot';
-        status.appendChild(dot);
-        statusText = document.createTextNode('running');
-        status.appendChild(statusText);
-        statusEl = status;
-        rheader.appendChild(rlogo);
-        rheader.appendChild(rlabel);
-        rheader.appendChild(status);
-
-        // model card (inside the R-session group)
-        const card = node('orb-card', CARD.x, CARD.y, rgroup);
-        cardEl = card;
-        card.style.width = CARD.w + 'px';
-        card.style.height = CARD.h + 'px';
-        const ct = document.createElement('div');
-        ct.className = 'orb-card-title';
-        ct.textContent = 'Trained model';
-        const cc = document.createElement('div');
-        cc.className = 'orb-card-code';
-        cc.textContent = MODEL_LABEL;
-        card.appendChild(ct);
-        card.appendChild(cc);
-
-        // Snowflake: a standalone panel (non-Posit), or the outer container (Posit)
-        // where the data table gets its own nested "Database" box that mirrors the
-        // Workbench box — both live inside the Snowflake account (Database = where
-        // tables physically sit, the storage counterpart to the compute session).
-        if (!POSIT) {
-          const panel = node('orb-snowflake', PANEL.x, PANEL.y, stage);
-          panel.style.width = PANEL.w + 'px';
-          panel.style.height = PANEL.h + 'px';
-        } else {
-          const db = node('orb-database', PANEL.x, PANEL.y, stage);
-          db.style.width = PANEL.w + 'px';
-          db.style.height = PANEL.h + 'px';
-          const dbh = node('orb-database-header', PANEL.x + 24, PANEL.y + 22, stage);
-          const dbicon = document.createElement('span');
-          dbicon.className = 'orb-dbicon';
-          const dblabel = document.createElement('span');
-          dblabel.textContent = 'Database';
-          dbh.appendChild(dbicon);
-          dbh.appendChild(dblabel);
-        }
-        const hX = POSIT ? SF.x + 26 : PANEL.x + 24;
-        const hY = POSIT ? SF.y + 16 : PANEL.y + 22;
-        const header = node('orb-snowflake-header', hX, hY, stage);
-        const flake = document.createElement('span');
-        flake.className = 'orb-flake';
-        flake.textContent = '❄';
-        const hlabel = document.createElement('span');
-        hlabel.textContent = 'Snowflake';
-        header.appendChild(flake);
-        header.appendChild(hlabel);
-
-        // header row (fixed — stays put while the body scrolls beneath it)
-        COLS.forEach((name, c) => {
-          const { x, y } = cellXY(c, 0);
-          const cls = 'orb-cell orb-head' + (c === PRED_COL ? ' orb-pred' : '');
-          const cell = node(cls, x, y, stage);
-          sizeCell(cell, true);
-          cell.textContent = name;
-        });
-
-        // clipped viewport (below the header) + inner scroller for the body rows
-        const view = node('orb-tableview', TABLE_X, TABLE_Y + HEAD_H, stage);
-        view.style.width = TABLE_W + 'px';
-        view.style.height = VIEW_H + 'px';
-        const scroller = document.createElement('div');
-        scroller.className = 'orb-scroller';
-        view.appendChild(scroller);
-        scrollerEl = scroller;
-        anime.set(scroller, { translateY: 0 });   // never via the translate() shorthand
-
-        // one body row of cells; predList collects the .pred spans (start empty)
-        function buildRow(rowData, idx, predList) {
-          for (let c = 0; c < COLS.length; c++) {
-            const { x, y } = bodyCellXY(c, idx);
-            if (c === PRED_COL) {
-              const cell = node('orb-cell orb-pred', x, y, scroller);
-              sizeCell(cell, false);
-              const span = document.createElement('span');
-              span.style.opacity = 0;
-              cell.appendChild(span);
-              predList.push(span);
-            } else {
-              const cell = node('orb-cell', x, y, scroller);
-              sizeCell(cell, false);
-              cell.textContent = rowData[c];
-            }
-          }
-        }
-        function buildDots(idx) {
-          COLS.forEach((name, c) => {
-            const { x, y } = bodyCellXY(c, idx);
-            const cell = node('orb-cell orb-dots', x, y, scroller);
-            sizeCell(cell, false);
-            cell.textContent = '⋮';
-          });
-        }
-
-        // batch 1 (visible) + its trailing ⋮, then batch 2 (new data, below the
-        // fold) + its own ⋮ — exactly one page apart so a one-page scroll swaps them.
-        for (let r = 0; r < NROWS; r++) buildRow(DATA[r], r, predSpans);
-        buildDots(NROWS);
-        for (let r = 0; r < NROWS; r++) buildRow(NEW_DATA[r], NROWS + 1 + r, predSpans2);
-        buildDots(2 * NROWS + 1);
-
-        // Posit: dashed divider marking the runtime boundary inside Snowflake
-        if (POSIT) {
-          if (VERT) {
-            const by = (RPANEL.y + RPANEL.h + TABLE_Y) / 2;
-            const bd = node('orb-boundary-h', TABLE_X - 10, by, stage);
-            bd.style.width = (TABLE_W + 20) + 'px';
-          } else {
-            const bx = (RPANEL.x + RPANEL.w + TABLE_X) / 2;
-            const bd = node('orb-boundary', bx, TABLE_Y - 10, stage);
-            bd.style.height = (HEAD_H + (NROWS + 1) * ROW_H + 20) + 'px';
-          }
-        }
-        return true;
+      // Posit framing: outer Snowflake container that holds everything
+      if (POSIT) {
+        const sf = node('orb-snowflake', SF.x, SF.y, stage);
+        sf.style.width = SF.w + 'px';
+        sf.style.height = SF.h + 'px';
       }
 
-      // ---- stage 1: orbital() compiles the model into a SQL chip, in place ----
-      const CARD_CX = CARD.x + CARD.w / 2;
-      // SQL chip sits where the card is (the model literally becomes SQL); centred
-      // on the card (chip ~298px wide incl. padding, ~90px tall)
-      const CHIP = { x: CARD_CX - 149, y: CARD.y + CARD.h / 2 - 45 };
-      const PILL = { x: CARD_CX - 56, y: CARD.y - 52 };   // orbital() lens above card
-      const SQL_HTML =
-        '<span class="orb-kw">SELECT</span> *,<br>' +
-        '&nbsp;&nbsp;<span class="orb-model">' + MODEL_LABEL + '</span> ' +
-        '<span class="orb-kw">AS</span> <span class="orb-col">.pred</span><br>' +
-        '<span class="orb-kw">FROM</span> data';
+      // The session lives directly on the stage, or — when grouped — inside a
+      // full-stage .orb-rgroup wrapper so the panel/header/card wind down as one.
+      let sessionParent = stage;
+      let rgroup = null;
+      if (groupSession) {
+        rgroup = document.createElement('div');
+        rgroup.className = 'orb-rgroup';
+        stage.appendChild(rgroup);
+        sessionParent = rgroup;
+      }
+
+      // session panel (left, or nested inside the SF container in Posit)
+      const rpanel = node('orb-rsession', RPANEL.x, RPANEL.y, sessionParent);
+      rpanel.style.width = RPANEL.w + 'px';
+      rpanel.style.height = RPANEL.h + 'px';
+      const rheader = node('orb-rsession-header', RPANEL.x + 24, RPANEL.y + 22, sessionParent);
+      const rlogo = document.createElement('span');
+      rlogo.className = 'orb-rlogo';
+      rlogo.textContent = SESSION_LOGO;
+      const rlabel = document.createElement('span');
+      rlabel.textContent = SESSION_LABEL;
+      // a persistent "running" status: this approach needs a live session
+      const status = document.createElement('span');
+      status.className = 'orb-status';
+      const dot = document.createElement('span');
+      dot.className = 'orb-status-dot';
+      status.appendChild(dot);
+      const statusText = document.createTextNode('running');
+      status.appendChild(statusText);
+      rheader.appendChild(rlogo);
+      rheader.appendChild(rlabel);
+      rheader.appendChild(status);
+
+      // model card (inside the session panel / group)
+      const card = node('orb-card', CARD.x, CARD.y, sessionParent);
+      card.style.width = CARD.w + 'px';
+      card.style.height = CARD.h + 'px';
+      const ct = document.createElement('div');
+      ct.className = 'orb-card-title';
+      ct.textContent = 'Trained model';
+      const cc = document.createElement('div');
+      cc.className = 'orb-card-code';
+      cc.textContent = MODEL_LABEL;
+      card.appendChild(ct);
+      card.appendChild(cc);
+
+      // Snowflake: a standalone panel (non-Posit), or the outer container (Posit)
+      // where the data table gets its own nested "Database" box that mirrors the
+      // Workbench box — both live inside the Snowflake account (Database = where
+      // tables physically sit, the storage counterpart to the compute session).
+      if (!POSIT) {
+        const panel = node('orb-snowflake', PANEL.x, PANEL.y, stage);
+        panel.style.width = PANEL.w + 'px';
+        panel.style.height = PANEL.h + 'px';
+      } else {
+        const db = node('orb-database', PANEL.x, PANEL.y, stage);
+        db.style.width = PANEL.w + 'px';
+        db.style.height = PANEL.h + 'px';
+        const dbh = node('orb-database-header', PANEL.x + 24, PANEL.y + 22, stage);
+        const dbicon = document.createElement('span');
+        dbicon.className = 'orb-dbicon';
+        const dblabel = document.createElement('span');
+        dblabel.textContent = 'Database';
+        dbh.appendChild(dbicon);
+        dbh.appendChild(dblabel);
+      }
+      const hX = POSIT ? SF.x + 26 : PANEL.x + 24;
+      const hY = POSIT ? SF.y + 16 : PANEL.y + 22;
+      const header = node('orb-snowflake-header', hX, hY, stage);
+      const flake = document.createElement('span');
+      flake.className = 'orb-flake';
+      flake.textContent = '❄';
+      const hlabel = document.createElement('span');
+      hlabel.textContent = 'Snowflake';
+      header.appendChild(flake);
+      header.appendChild(hlabel);
+
+      // header row (fixed — stays put while the body scrolls beneath it)
+      COLS.forEach((name, c) => {
+        const { x, y } = cellXY(c, 0);
+        const cls = 'orb-cell orb-head' + (c === PRED_COL ? ' orb-pred' : '');
+        const cell = node(cls, x, y, stage);
+        sizeCell(cell, true);
+        cell.textContent = name;
+      });
+
+      // clipped viewport (below the header) + inner scroller for the body rows
+      const view = node('orb-tableview', TABLE_X, TABLE_Y + HEAD_H, stage);
+      view.style.width = TABLE_W + 'px';
+      view.style.height = VIEW_H + 'px';
+      const scroller = document.createElement('div');
+      scroller.className = 'orb-scroller';
+      view.appendChild(scroller);
+      anime.set(scroller, { translateY: 0 });   // never via the translate() shorthand
+
+      const predSpans = [];         // .pred spans for the first batch (fade in)
+      const predSpans2 = [];        // .pred spans for the freshly-scrolled batch
+
+      // one body row of cells; predList collects the .pred spans (start empty)
+      function buildRow(rowData, idx, predList) {
+        for (let c = 0; c < COLS.length; c++) {
+          const { x, y } = bodyCellXY(c, idx);
+          if (c === PRED_COL) {
+            const cell = node('orb-cell orb-pred', x, y, scroller);
+            sizeCell(cell, false);
+            const span = document.createElement('span');
+            span.style.opacity = 0;           // value fades in when filled
+            cell.appendChild(span);
+            predList.push(span);
+          } else {
+            const cell = node('orb-cell', x, y, scroller);
+            sizeCell(cell, false);
+            cell.textContent = rowData[c];
+          }
+        }
+      }
+      function buildDots(idx) {
+        COLS.forEach((name, c) => {
+          const { x, y } = bodyCellXY(c, idx);
+          const cell = node('orb-cell orb-dots', x, y, scroller);
+          sizeCell(cell, false);
+          cell.textContent = '⋮';
+        });
+      }
+
+      // batch 1 (visible) + its trailing ⋮, then batch 2 (new data, below the fold)
+      // + its own ⋮ — exactly one page apart so a one-page scroll swaps them.
+      for (let r = 0; r < NROWS; r++) buildRow(DATA[r], r, predSpans);
+      buildDots(NROWS);
+      for (let r = 0; r < NROWS; r++) buildRow(NEW_DATA[r], NROWS + 1 + r, predSpans2);
+      buildDots(2 * NROWS + 1);
+
+      // Posit: a dashed divider marking the runtime boundary the data crosses inside
+      // Snowflake (vertical line horizontally; horizontal line vertically)
+      if (POSIT) {
+        if (VERT) {
+          const by = (RPANEL.y + RPANEL.h + TABLE_Y) / 2;
+          const bd = node('orb-boundary-h', TABLE_X - 10, by, stage);
+          bd.style.width = (TABLE_W + 20) + 'px';
+        } else {
+          const bx = (RPANEL.x + RPANEL.w + TABLE_X) / 2;
+          const bd = node('orb-boundary', bx, TABLE_Y - 10, stage);
+          bd.style.height = (HEAD_H + (NROWS + 1) * ROW_H + 20) + 'px';
+        }
+      }
+
+      ORB._ctx = {
+        // knobs / canvas
+        BLUE, RBLUE, MODEL_LABEL, POSIT, SESSION_LABEL, SESSION_LOGO, VERT,
+        STAGE_W, STAGE_H,
+        // regions
+        SF, RPANEL, CARD, PANEL,
+        // table geometry
+        COLS, PRED_COL, CELL_W, HEAD_H, ROW_H, NROWS, TABLE_W, TABLE_X, TABLE_Y, VIEW_H,
+        // data
+        DATA, NEW_DATA, PRED_VALS, NEW_PRED_VALS,
+        // helpers
+        node, cellXY, bodyCellXY, sizeCell, featureRowY,
+        // element refs
+        cardEl: card,
+        rpanelEl: groupSession ? rgroup : rpanel,   // the element a module dims
+        statusEl: status,
+        statusText,
+        scrollerEl: scroller,
+        predSpans, predSpans2,
+      };
+      return ORB._ctx;
+    };
+    </script>
+    <script>
+    /* ---- orbital + Snowflake: predictions IN PLACE ----
+     * Marker slide: .orb-slide   Stage container: #orb-stage
+     * render(stage) is idempotent (stage = number of visible gating fragments).
+     *
+     * The shared starting frame, layout maths, data table and DOM helpers come from
+     * ORB.build() in js/orbital-base.html. The contrast to orbital-roundtrip: instead
+     * of shipping data out to a live session and back, orbital() compiles the model
+     * to SQL that runs in place inside Snowflake — so the session is no longer needed.
+     */
+    (function () {
+      // shared context + derived geometry, populated lazily once the stage exists
+      let C = null;
+      let MODEL_LABEL, CARD, PANEL, VIEW_H,
+          cardEl, rpanelEl, statusEl, statusText, scrollerEl,
+          predSpans, predSpans2, PRED_VALS, NEW_PRED_VALS;
+      // derived (computed in ensure())
+      let CARD_CX, CHIP, PILL, SQL_HTML, CHIP_S, SCROLL_Y;
+      const CHIP_DOCK_SCALE = 0.7;
+      const CHIP_DOCK_MARGIN = 30;   // gap from the panel's right edge
+
+      // phase machine: 0 = model card | 1 = compiled to SQL chip | 2 = docked in SF
+      //   | 3 = run (filled) | 4 = scrolled to fresh batch | 5 = fresh batch scored
+      let ip = { phase: 0, els: [], token: 0, chip: null };
+
+      function ensure() {
+        if (C) return true;
+        C = ORB.build({ groupSession: true });   // session winds down as one group
+        if (!C) return false;
+        ({ MODEL_LABEL, CARD, PANEL, VIEW_H,
+           cardEl, rpanelEl, statusEl, statusText, scrollerEl,
+           predSpans, predSpans2, PRED_VALS, NEW_PRED_VALS } = C);
+
+        // ---- derived geometry: where the model becomes SQL and where it docks ----
+        CARD_CX = CARD.x + CARD.w / 2;
+        // SQL chip sits where the card is (the model literally becomes SQL); centred
+        // on the card (chip ~298px wide incl. padding, ~90px tall)
+        CHIP = { x: CARD_CX - 149, y: CARD.y + CARD.h / 2 - 45 };
+        PILL = { x: CARD_CX - 56, y: CARD.y - 52 };   // orbital() lens above card
+        SQL_HTML =
+          '<span class="orb-kw">SELECT</span> *,<br>' +
+          '&nbsp;&nbsp;<span class="orb-model">' + MODEL_LABEL + '</span> ' +
+          '<span class="orb-kw">AS</span> <span class="orb-col">.pred</span><br>' +
+          '<span class="orb-kw">FROM</span> data';
+        // docked position: the compiled SQL tucks into the top-right corner of the
+        // Snowflake/Database box and *stays* there — it becomes a standing view that
+        // is re-run to generate predictions (rather than dissolving into the table).
+        // The chip is ~298px wide (half = 149); scale it down to sit in the corner.
+        CHIP_S = {
+          x: PANEL.x + PANEL.w - CHIP_DOCK_MARGIN - 149 * CHIP_DOCK_SCALE - 149,
+          y: PANEL.y + 8,
+        };
+        SCROLL_Y = VIEW_H;            // one-page scroll that swaps batch 1 for batch 2
+        return true;
+      }
 
       // chip/pill positioned via anime translateX/Y (never node()'s translate()
       // shorthand — anime can't parse it and would double / drop the offset when we
@@ -768,17 +844,6 @@
         ip.chip = chip;
         return chip;
       }
-
-      // docked position: the compiled SQL tucks into the top-right corner of the
-      // Snowflake/Database box and *stays* there — it becomes a standing view that
-      // is re-run to generate predictions (rather than dissolving into the table).
-      // The chip is ~298px wide (half = 149); scale it down to sit in the corner.
-      const CHIP_DOCK_SCALE = 0.7;
-      const CHIP_DOCK_MARGIN = 30;   // gap from the panel's right edge
-      const CHIP_S = {
-        x: PANEL.x + PANEL.w - CHIP_DOCK_MARGIN - 149 * CHIP_DOCK_SCALE - 149,
-        y: PANEL.y + 8,
-      };
 
       // once the SQL is in Snowflake, the R session has nothing left to do
       function windDownR() {
@@ -809,8 +874,6 @@
           duration: 240, easing: 'easeOutQuad', direction: 'alternate', loop: 2,
         });
       }
-      // one-page scroll that swaps batch 1 for the fresh batch below it
-      const SCROLL_Y = VIEW_H;
 
       function clearAll() {
         ip.token++;
@@ -999,7 +1062,7 @@
       }
 
       function render(stage) {
-        if (!build()) return;
+        if (!ensure()) return;
         const target = stage >= 5 ? 5
                      : stage >= 4 ? 4
                      : stage >= 3 ? 3

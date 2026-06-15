@@ -8,6 +8,9 @@ project:
   resources:
     # keep .nojekyll in docs/ so Pages serves the site_libs/ assets verbatim
     - .nojekyll
+    # vendored anime.js (referenced by URL from the header include, so it must be
+    # copied into docs/ verbatim rather than inlined)
+    - js/anime.min.js
 
 website:
   title: "orbital + Snowflake"
@@ -21,14 +24,17 @@ format:
     controls: true
     progress: true
     hash: true
-    # anime.js (pinned to v3 — v4 changed the timeline API)
+    # anime.js (pinned to v3 — v4 changed the timeline API). Vendored locally so
+    # the decks are self-contained and render offline / survive a CDN outage.
     include-in-header:
       text: |
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
-    # shared infrastructure (coord conversion, fragment gating) loads first;
-    # each deck adds its own animation module via its own include-after-body.
+        <script src="js/anime.min.js"></script>
+    # shared infrastructure loads first (coord conversion, fragment gating), then
+    # the shared build/layout base; each deck adds its own animation module via
+    # its own include-after-body.
     include-after-body:
       - js/infra.html
+      - js/orbital-base.html
   html:
     theme: cosmo
     toc: false

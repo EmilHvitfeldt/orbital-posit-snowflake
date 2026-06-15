@@ -75,9 +75,11 @@ the project `render:` glob.
 
 ## Layout
 
-- `_quarto.yml` — website + format defaults; loads anime.js and `js/infra.html` for every deck.
+- `_quarto.yml` — website + format defaults; loads anime.js, `js/infra.html`, and `js/orbital-base.html` for every deck.
 - `index.qmd` — landing page (HTML) linking all 16 decks.
 - `*.qmd` — the decks (knob blocks at top).
+- `js/anime.min.js` — vendored anime.js v3.2.2 (referenced by the header include; listed under project `resources:` so it is copied into `docs/`).
 - `js/infra.html` — shared `TM` helpers (copied from tidy-animations; keep in sync).
-- `js/orbital-roundtrip.html`, `js/orbital-inplace.html` — the two animation modules.
+- `js/orbital-base.html` — `ORB.build(opts)`: the shared starting frame, all layout maths, the data table, and the DOM helpers, returned as a context object. **Both modules consume this — change geometry here, once.** `opts.groupSession` toggles whether the session winds down as one `.orb-rgroup` (in-place) or its panel/card dim individually (round-trip).
+- `js/orbital-roundtrip.html`, `js/orbital-inplace.html` — the two animation modules; each owns only its phase choreography and calls `ORB.build()` lazily inside `render()`.
 - `css/demos.css` — deck styles (SCSS-layered); `css/index.css` — landing-page styles.

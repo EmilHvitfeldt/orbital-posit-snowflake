@@ -21,7 +21,6 @@ format:
 ## {.orb-slide}
 
 ::: {.orb-stage-wrap}
-<div id="orb-title" class="orb-title"></div>
 <div id="orb-stage"></div>
 :::
 

@@ -12,20 +12,10 @@ section:has(.orb-slide) { overflow: hidden; }
 
 .orb-stage-wrap { position: relative; margin-top: 10px; }
 
-.orb-title {
-  text-align: center;
-  font-size: 38px;
-  font-weight: 700;
-  color: var(--tm-ink);
-  min-height: 50px;   /* reserve space so revealing text causes no layout shift */
-  opacity: 0;
-}
-
-/* fixed-size coordinate box; JS positions children in this same space */
+/* coordinate box; the animation module sets its width/height (orientation- and
+   knob-dependent) on build, so they are intentionally not fixed here. */
 #orb-stage {
   position: relative;
-  width: 1180px;
-  height: 600px;
   margin: 0 auto;
 }
 
