@@ -11,6 +11,8 @@ project:
     # vendored anime.js (referenced by URL from the header include, so it must be
     # copied into docs/ verbatim rather than inlined)
     - js/anime.min.js
+    # Posit Workbench logo, referenced by URL from the session header chip
+    - js/posit-workbench.svg
 
 website:
   title: "orbital + Snowflake"

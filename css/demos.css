@@ -156,6 +156,18 @@ section:has(.orb-slide) { overflow: hidden; }
   font-size: 18px;
   font-weight: 800;
 }
+/* image logos (e.g. Posit Workbench) sit directly in the header, no chip */
+.orb-rsession-header .orb-rlogo.orb-rlogo-img {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.orb-rsession-header .orb-rlogo.orb-rlogo-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
 
 /* model card highlights while the R session is "scoring" (CSS owns this so it
    never fights anime.js for the card's transform) */
@@ -286,7 +298,6 @@ section:has(.orb-slide) { overflow: hidden; }
   font-weight: 700;
   color: var(--orb-blue, #29B5E8);
 }
-.orb-snowflake-header .orb-flake { font-size: 28px; }
 
 /* nested "Database" box wrapping the data table in Posit decks — mirrors the
    Workbench box; both sit inside the Snowflake container. Database is where

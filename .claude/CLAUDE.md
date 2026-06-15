@@ -37,7 +37,7 @@ four axes:
 | `ORB_ORIENT` | `'vertical'` → session on top, data on bottom, portrait 820×1080 stage (use a 900×1200 deck) | horizontal |
 | `ORB_MODEL_LABEL` | model-card code (`workflow()` / `Pipeline`) | `workflow()` |
 | `ORB_SESSION_LABEL` | session header text | `R session` / `Posit Workbench` |
-| `ORB_SESSION_LOGO` | session logo chip (`R` / `Py`) | `R` |
+| `ORB_SESSION_LOGO` | session logo chip: a short string (`R` / `Py`) renders as a letter chip, an image path (`.svg`/`.png`/…, e.g. `js/posit-workbench.svg`) renders as an `<img>`. Posit decks use the Workbench logo. | `R` |
 | `ORB_SNOWFLAKE` | Snowflake accent | `#29B5E8` |
 | `ORB_RSESSION` | session accent | `#276DC3` (R) / `#3776AB` (Python decks set this) |
 

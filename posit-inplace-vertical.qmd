@@ -12,6 +12,7 @@ format:
 <script>
   window.ORB_POSIT       = true;
   window.ORB_ORIENT      = 'vertical';   // session on top, data on the bottom
+  window.ORB_SESSION_LOGO = 'js/posit-workbench.svg';
   window.ORB_MODEL_LABEL = 'workflow()';
   window.ORB_SNOWFLAKE   = '#29B5E8';
   window.ORB_RSESSION    = '#276DC3';

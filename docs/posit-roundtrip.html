@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-a9caa901d38deccaee61657e215f01b7.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-3993e38d988e8a2d19920df8a303fa92.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -141,6 +141,7 @@
 <!-- Posit framing: the R session runs inside Snowflake (Posit Team Native App). -->
 <script>
   window.ORB_POSIT       = true;
+  window.ORB_SESSION_LOGO = 'js/posit-workbench.svg';
   window.ORB_MODEL_LABEL = 'workflow()';
   window.ORB_SNOWFLAKE   = '#29B5E8';
   window.ORB_RSESSION    = '#276DC3';
@@ -614,7 +615,17 @@
       const rheader = node('orb-rsession-header', RPANEL.x + 24, RPANEL.y + 22, sessionParent);
       const rlogo = document.createElement('span');
       rlogo.className = 'orb-rlogo';
-      rlogo.textContent = SESSION_LOGO;
+      // an image path (e.g. the Posit Workbench logo) renders as a chip-filling
+      // <img>; a short string renders as the bare "R"/"Py" letter chip
+      if (/\.(svg|png|jpe?g|webp)$/i.test(SESSION_LOGO)) {
+        rlogo.classList.add('orb-rlogo-img');
+        const img = document.createElement('img');
+        img.src = SESSION_LOGO;
+        img.alt = SESSION_LABEL;
+        rlogo.appendChild(img);
+      } else {
+        rlogo.textContent = SESSION_LOGO;
+      }
       const rlabel = document.createElement('span');
       rlabel.textContent = SESSION_LABEL;
       // a persistent "running" status: this approach needs a live session
@@ -665,12 +676,8 @@
       const hX = POSIT ? SF.x + 26 : PANEL.x + 24;
       const hY = POSIT ? SF.y + 16 : PANEL.y + 22;
       const header = node('orb-snowflake-header', hX, hY, stage);
-      const flake = document.createElement('span');
-      flake.className = 'orb-flake';
-      flake.textContent = '❄';
       const hlabel = document.createElement('span');
       hlabel.textContent = 'Snowflake';
-      header.appendChild(flake);
       header.appendChild(hlabel);
 
       // header row (fixed — stays put while the body scrolls beneath it)

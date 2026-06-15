@@ -14,7 +14,7 @@ format:
   window.ORB_ORIENT        = 'vertical';
   window.ORB_MODEL_LABEL   = 'Pipeline';
   window.ORB_SESSION_LABEL = 'Posit Workbench';
-  window.ORB_SESSION_LOGO  = 'Py';
+  window.ORB_SESSION_LOGO  = 'js/posit-workbench.svg';
   window.ORB_SNOWFLAKE     = '#29B5E8';
   window.ORB_RSESSION      = '#3776AB';
 </script>

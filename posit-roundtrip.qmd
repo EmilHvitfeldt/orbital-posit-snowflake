@@ -10,6 +10,7 @@ format:
 <!-- Posit framing: the R session runs inside Snowflake (Posit Team Native App). -->
 <script>
   window.ORB_POSIT       = true;
+  window.ORB_SESSION_LOGO = 'js/posit-workbench.svg';
   window.ORB_MODEL_LABEL = 'workflow()';
   window.ORB_SNOWFLAKE   = '#29B5E8';
   window.ORB_RSESSION    = '#276DC3';
