@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-a8ee5c8b9aeaf13fe615bf92af3cfb53.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-b737e61f2a9bbe9e7540d4b736adc0b4.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -480,9 +480,13 @@
       opts = opts || {};
       const groupSession = !!opts.groupSession;
 
-      const stage = document.getElementById('orb-stage');
+      // each deck can host more than one independent stage (e.g. the combined
+      // before+after deck), so the build cache is keyed by the stage's element id.
+      const stageId = opts.stageId || 'orb-stage';
+      const stage = document.getElementById(stageId);
       if (!stage) return null;
-      if (ORB._ctx) return ORB._ctx;   // already built — hand back the same context
+      ORB._ctx = ORB._ctx || {};
+      if (ORB._ctx[stageId]) return ORB._ctx[stageId];   // built already — hand back the same context
 
       const BLUE = window.ORB_SNOWFLAKE || '#29B5E8';
       const RBLUE = window.ORB_RSESSION || '#276DC3';
@@ -744,7 +748,7 @@
         }
       }
 
-      ORB._ctx = {
+      ORB._ctx[stageId] = {
         // knobs / canvas
         BLUE, RBLUE, MODEL_LABEL, POSIT, SESSION_LABEL, SESSION_LOGO, VERT,
         STAGE_W, STAGE_H,
@@ -764,7 +768,7 @@
         scrollerEl: scroller,
         predSpans, predSpans2,
       };
-      return ORB._ctx;
+      return ORB._ctx[stageId];
     };
     </script>
     <script>
@@ -829,7 +833,10 @@
       }
       function sync() {
         if (typeof Reveal === 'undefined' || !Reveal.getCurrentSlide) return;
-        const done = allShown(Reveal.getCurrentSlide());
+        // only on the final slide of the deck (so the combined before+after deck
+        // doesn't surface the CTA between its two sections)
+        const last = !Reveal.isLastSlide || Reveal.isLastSlide();
+        const done = last && allShown(Reveal.getCurrentSlide());
         cta.classList.toggle('orb-nav-cta-show', done);
       }
       (function boot() {
@@ -855,7 +862,16 @@
      * scored, and the prediction travels back to fill .pred — then the session
      * idles, and each fresh batch must make the whole trip again.
      */
-    (function () {
+    /* Exposed as an init function so a deck can run it on a specific stage/slide:
+     * the combined before+after deck calls it with its own stageId + marker +
+     * fragment ids. Defaults reproduce the standalone single-deck behaviour. */
+    ORB.initRoundtrip = function (opts) {
+      opts = opts || {};
+      const STAGE_ID = opts.stageId || 'orb-stage';
+      const MARKER = opts.markerClass || 'orb-slide';
+      const FRAGS = opts.fragmentIds ||
+        ['orb-rt-out', 'orb-rt-back', 'orb-rt-newscroll', 'orb-rt-new-out', 'orb-rt-new-back'];
+
       // shared context + derived geometry, populated lazily once the stage exists
       let C = null;
       let NROWS, ROW_H, HEAD_H, CELL_W, COLS, PRED_COL, TABLE_X, TABLE_W, TABLE_Y,
@@ -873,7 +889,7 @@
 
       function ensure() {
         if (C) return true;
-        C = ORB.build({ groupSession: false });   // session dimmed via the panel box
+        C = ORB.build({ groupSession: false, stageId: STAGE_ID });   // session dimmed via the panel box
         if (!C) return false;
         ({ NROWS, ROW_H, HEAD_H, CELL_W, COLS, PRED_COL, TABLE_X, TABLE_W, TABLE_Y,
            VIEW_H, CARD, VERT, featureRowY,
@@ -930,7 +946,7 @@
       // packet positioned via anime translateX/Y (never node()'s `translate()`
       // shorthand — anime can't parse it and would double the offset)
       function makePacket(x, y, text) {
-        const stage = document.getElementById('orb-stage');
+        const stage = document.getElementById(STAGE_ID);
         const pkt = document.createElement('div');
         pkt.className = 'orb-node orb-packet';
         pkt.textContent = text;
@@ -941,7 +957,7 @@
         return pkt;
       }
       function collectRows() {
-        const stage = document.getElementById('orb-stage');
+        const stage = document.getElementById(STAGE_ID);
         for (let r = 0; r < NROWS; r++) {
           const g = document.createElement('div');
           g.className = 'orb-node orb-ghost';
@@ -965,7 +981,7 @@
       // reverse of collectRows: ghosts grow back out of the packet onto each data
       // row, as if the collected rows were being put back where they came from.
       function releaseRows() {
-        const stage = document.getElementById('orb-stage');
+        const stage = document.getElementById(STAGE_ID);
         for (let r = 0; r < NROWS; r++) {
           const g = document.createElement('div');
           g.className = 'orb-node orb-ghost';
@@ -990,7 +1006,7 @@
       // anime owns ONLY rotate (mixing with a translate() shorthand would break it).
       function showGear() {
         if (rt.gear) return;                       // idempotent
-        const stage = document.getElementById('orb-stage');
+        const stage = document.getElementById(STAGE_ID);
         const gear = document.createElement('div');
         gear.className = 'orb-gear';
         gear.textContent = '⚙';
@@ -1265,11 +1281,14 @@
       }
 
       TM.gate({
-        markerClass: 'orb-slide',
-        fragmentIds: ['orb-rt-out', 'orb-rt-back', 'orb-rt-newscroll', 'orb-rt-new-out', 'orb-rt-new-back'],
+        markerClass: MARKER,
+        fragmentIds: FRAGS,
         render,
       });
-    })();
+    };
+    // standalone decks self-init with the defaults; the combined deck sets
+    // window.ORB_COMBINED and calls ORB.initRoundtrip()/initInplace() itself.
+    if (!window.ORB_COMBINED) ORB.initRoundtrip();
     </script>
     <script id="quarto-html-after-body" type="application/javascript">
       window.document.addEventListener("DOMContentLoaded", function (event) {

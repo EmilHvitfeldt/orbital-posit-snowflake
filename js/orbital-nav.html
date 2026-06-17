@@ -60,7 +60,10 @@
   }
   function sync() {
     if (typeof Reveal === 'undefined' || !Reveal.getCurrentSlide) return;
-    const done = allShown(Reveal.getCurrentSlide());
+    // only on the final slide of the deck (so the combined before+after deck
+    // doesn't surface the CTA between its two sections)
+    const last = !Reveal.isLastSlide || Reveal.isLastSlide();
+    const done = last && allShown(Reveal.getCurrentSlide());
     cta.classList.toggle('orb-nav-cta-show', done);
   }
   (function boot() {

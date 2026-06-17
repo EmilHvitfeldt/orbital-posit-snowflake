@@ -1,0 +1,49 @@
+---
+title: "orbital + Snowflake: before & after"
+format:
+  revealjs:
+    include-after-body:
+      # both modules first (they define ORB.initRoundtrip / ORB.initInplace and,
+      # because ORB_COMBINED is set, do NOT self-init), then the wiring that binds
+      # each to its own slide/stage.
+      - js/orbital-roundtrip.html
+      - js/orbital-inplace.html
+      - js/orbital-combined-init.html
+---
+
+```{=html}
+<!-- Combined "before -> after" deck: round-trip slide, then the orbital way, in
+     one flow. ORB_COMBINED tells the two modules not to self-init; the wiring in
+     js/orbital-combined-init.html runs them on their own stages. Knobs are shared
+     by both halves (R, horizontal, non-Posit). -->
+<script>
+  window.ORB_COMBINED    = true;
+  window.ORB_MODEL_LABEL = 'workflow()';   // R: workflow()  |  Python: Pipeline
+  window.ORB_SNOWFLAKE   = '#29B5E8';       // Snowflake brand blue
+  window.ORB_RSESSION    = '#276DC3';       // R blue
+</script>
+```
+
+## The "before": round-trip {.orb-slide .orb-slide-rt}
+
+::: {.orb-stage-wrap}
+<div id="orb-stage-rt"></div>
+:::
+
+[]{.fragment .orb-frag id="orb-rt-out"}
+[]{.fragment .orb-frag id="orb-rt-back"}
+[]{.fragment .orb-frag id="orb-rt-newscroll"}
+[]{.fragment .orb-frag id="orb-rt-new-out"}
+[]{.fragment .orb-frag id="orb-rt-new-back"}
+
+## The orbital way: in place {.orb-slide .orb-slide-ip}
+
+::: {.orb-stage-wrap}
+<div id="orb-stage-ip"></div>
+:::
+
+[]{.fragment .orb-frag id="orb-compile"}
+[]{.fragment .orb-frag id="orb-embed"}
+[]{.fragment .orb-frag id="orb-run"}
+[]{.fragment .orb-frag id="orb-newdata"}
+[]{.fragment .orb-frag id="orb-newpred"}

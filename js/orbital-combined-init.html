@@ -1,0 +1,12 @@
+<script>
+/* ---- combined before+after deck wiring ----
+ * Loaded last (after both animation modules), this binds the round-trip module
+ * to the first slide and the in-place module to the second, each on its own
+ * stage container. window.ORB_COMBINED (set in the deck's knob block) suppresses
+ * the modules' default self-init so they only run here, once, with these ids.
+ * The default fragment ids differ between the two modules, so they need no
+ * override — only the stage id + slide marker are deck-specific.
+ */
+ORB.initRoundtrip({ stageId: 'orb-stage-rt', markerClass: 'orb-slide-rt' });
+ORB.initInplace({  stageId: 'orb-stage-ip', markerClass: 'orb-slide-ip' });
+</script>

@@ -14,6 +14,15 @@ These RevealJS decks contrast two ways of scoring a trained [tidymodels](https:/
 
 Each deck comes in a **Posit** framing (the session runs inside Snowflake via the Posit Team Native App) and a **vertical** (portrait) layout, in both **R** and **Python** — 16 decks in all. Use the arrow keys to step through the stages.
 
+## Both, in one flow
+
+Step through the round-trip ("before"), then continue with an arrow into the orbital way ("after") in a single deck.
+
+| | session beside Snowflake | session inside Snowflake (Posit) |
+|---|---|---|
+| **R · tidymodels** | [horizontal](orbital-combined.html) · [vertical](orbital-combined-vertical.html) | [horizontal](posit-combined.html) · [vertical](posit-combined-vertical.html) |
+| **Python · scikit-learn** | [horizontal](python-orbital-combined.html) · [vertical](python-orbital-combined-vertical.html) | [horizontal](python-posit-combined.html) · [vertical](python-posit-combined-vertical.html) |
+
 ## R · tidymodels
 
 | | round-trip (the "before") | orbital (in place) |

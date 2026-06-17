@@ -31,7 +31,7 @@
       vertical-align: middle;
     }
   </style>
-  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-a8ee5c8b9aeaf13fe615bf92af3cfb53.css">
+  <link rel="stylesheet" href="site_libs/revealjs/dist/theme/quarto-b737e61f2a9bbe9e7540d4b736adc0b4.css">
   <link href="site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
   <link href="site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
@@ -487,9 +487,13 @@
       opts = opts || {};
       const groupSession = !!opts.groupSession;
 
-      const stage = document.getElementById('orb-stage');
+      // each deck can host more than one independent stage (e.g. the combined
+      // before+after deck), so the build cache is keyed by the stage's element id.
+      const stageId = opts.stageId || 'orb-stage';
+      const stage = document.getElementById(stageId);
       if (!stage) return null;
-      if (ORB._ctx) return ORB._ctx;   // already built — hand back the same context
+      ORB._ctx = ORB._ctx || {};
+      if (ORB._ctx[stageId]) return ORB._ctx[stageId];   // built already — hand back the same context
 
       const BLUE = window.ORB_SNOWFLAKE || '#29B5E8';
       const RBLUE = window.ORB_RSESSION || '#276DC3';
@@ -751,7 +755,7 @@
         }
       }
 
-      ORB._ctx = {
+      ORB._ctx[stageId] = {
         // knobs / canvas
         BLUE, RBLUE, MODEL_LABEL, POSIT, SESSION_LABEL, SESSION_LOGO, VERT,
         STAGE_W, STAGE_H,
@@ -771,7 +775,7 @@
         scrollerEl: scroller,
         predSpans, predSpans2,
       };
-      return ORB._ctx;
+      return ORB._ctx[stageId];
     };
     </script>
     <script>
@@ -836,7 +840,10 @@
       }
       function sync() {
         if (typeof Reveal === 'undefined' || !Reveal.getCurrentSlide) return;
-        const done = allShown(Reveal.getCurrentSlide());
+        // only on the final slide of the deck (so the combined before+after deck
+        // doesn't surface the CTA between its two sections)
+        const last = !Reveal.isLastSlide || Reveal.isLastSlide();
+        const done = last && allShown(Reveal.getCurrentSlide());
         cta.classList.toggle('orb-nav-cta-show', done);
       }
       (function boot() {
@@ -861,7 +868,16 @@
      * of shipping data out to a live session and back, orbital() compiles the model
      * to SQL that runs in place inside Snowflake — so the session is no longer needed.
      */
-    (function () {
+    /* Exposed as an init function (see orbital-roundtrip for the why): the combined
+     * before+after deck runs it on its own stage/slide; defaults reproduce the
+     * standalone single-deck behaviour. */
+    ORB.initInplace = function (opts) {
+      opts = opts || {};
+      const STAGE_ID = opts.stageId || 'orb-stage';
+      const MARKER = opts.markerClass || 'orb-slide';
+      const FRAGS = opts.fragmentIds ||
+        ['orb-compile', 'orb-embed', 'orb-run', 'orb-newdata', 'orb-newpred'];
+
       // shared context + derived geometry, populated lazily once the stage exists
       let C = null;
       let MODEL_LABEL, CARD, PANEL, VIEW_H,
@@ -878,7 +894,7 @@
 
       function ensure() {
         if (C) return true;
-        C = ORB.build({ groupSession: true });   // session winds down as one group
+        C = ORB.build({ groupSession: true, stageId: STAGE_ID });   // session winds down as one group
         if (!C) return false;
         ({ MODEL_LABEL, CARD, PANEL, VIEW_H,
            cardEl, rpanelEl, statusEl, statusText, scrollerEl,
@@ -911,7 +927,7 @@
       // shorthand — anime can't parse it and would double / drop the offset when we
       // also animate scale).
       function makeAt(cls, x, y) {
-        const stage = document.getElementById('orb-stage');
+        const stage = document.getElementById(STAGE_ID);
         const el = document.createElement('div');
         el.className = 'orb-node ' + cls;
         stage.appendChild(el);
@@ -1170,11 +1186,14 @@
       }
 
       TM.gate({
-        markerClass: 'orb-slide',
-        fragmentIds: ['orb-compile', 'orb-embed', 'orb-run', 'orb-newdata', 'orb-newpred'],
+        markerClass: MARKER,
+        fragmentIds: FRAGS,
         render,
       });
-    })();
+    };
+    // standalone decks self-init with the defaults; the combined deck sets
+    // window.ORB_COMBINED and calls the init functions itself.
+    if (!window.ORB_COMBINED) ORB.initInplace();
     </script>
     <script id="quarto-html-after-body" type="application/javascript">
       window.document.addEventListener("DOMContentLoaded", function (event) {

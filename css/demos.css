@@ -13,8 +13,10 @@ section:has(.orb-slide) { overflow: hidden; }
 .orb-stage-wrap { position: relative; margin-top: 10px; }
 
 /* coordinate box; the animation module sets its width/height (orientation- and
-   knob-dependent) on build, so they are intentionally not fixed here. */
-#orb-stage {
+   knob-dependent) on build, so they are intentionally not fixed here. The
+   attribute match covers both the lone #orb-stage and the combined deck's
+   per-slide #orb-stage-rt / #orb-stage-ip containers. */
+[id^="orb-stage"] {
   position: relative;
   margin: 0 auto;
 }

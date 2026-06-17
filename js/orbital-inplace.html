@@ -8,7 +8,16 @@
  * of shipping data out to a live session and back, orbital() compiles the model
  * to SQL that runs in place inside Snowflake — so the session is no longer needed.
  */
-(function () {
+/* Exposed as an init function (see orbital-roundtrip for the why): the combined
+ * before+after deck runs it on its own stage/slide; defaults reproduce the
+ * standalone single-deck behaviour. */
+ORB.initInplace = function (opts) {
+  opts = opts || {};
+  const STAGE_ID = opts.stageId || 'orb-stage';
+  const MARKER = opts.markerClass || 'orb-slide';
+  const FRAGS = opts.fragmentIds ||
+    ['orb-compile', 'orb-embed', 'orb-run', 'orb-newdata', 'orb-newpred'];
+
   // shared context + derived geometry, populated lazily once the stage exists
   let C = null;
   let MODEL_LABEL, CARD, PANEL, VIEW_H,
@@ -25,7 +34,7 @@
 
   function ensure() {
     if (C) return true;
-    C = ORB.build({ groupSession: true });   // session winds down as one group
+    C = ORB.build({ groupSession: true, stageId: STAGE_ID });   // session winds down as one group
     if (!C) return false;
     ({ MODEL_LABEL, CARD, PANEL, VIEW_H,
        cardEl, rpanelEl, statusEl, statusText, scrollerEl,
@@ -58,7 +67,7 @@
   // shorthand — anime can't parse it and would double / drop the offset when we
   // also animate scale).
   function makeAt(cls, x, y) {
-    const stage = document.getElementById('orb-stage');
+    const stage = document.getElementById(STAGE_ID);
     const el = document.createElement('div');
     el.className = 'orb-node ' + cls;
     stage.appendChild(el);
@@ -317,9 +326,12 @@
   }
 
   TM.gate({
-    markerClass: 'orb-slide',
-    fragmentIds: ['orb-compile', 'orb-embed', 'orb-run', 'orb-newdata', 'orb-newpred'],
+    markerClass: MARKER,
+    fragmentIds: FRAGS,
     render,
   });
-})();
+};
+// standalone decks self-init with the defaults; the combined deck sets
+// window.ORB_COMBINED and calls the init functions itself.
+if (!window.ORB_COMBINED) ORB.initInplace();
 </script>
