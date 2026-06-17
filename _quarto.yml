@@ -37,6 +37,8 @@ format:
     include-after-body:
       - js/infra.html
       - js/orbital-base.html
+      # shared deck navigation: Home link + before -> after completion CTA
+      - js/orbital-nav.html
   html:
     theme: cosmo
     toc: false

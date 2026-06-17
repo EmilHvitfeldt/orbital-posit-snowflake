@@ -1,0 +1,77 @@
+<script>
+/* ---- shared deck navigation overlay ----
+ * Two affordances, loaded on every deck:
+ *   1. a persistent "Home" link (top-left) back to the landing page.
+ *   2. a completion call-to-action that fades in once every fragment on the
+ *      orbital slide is visible (the flow is finished):
+ *        - round-trip decks ("before") offer "Continue to in-place ->",
+ *          linking to the matching in-place deck so before -> after is one flow.
+ *        - in-place decks ("after") offer "Replay from round-trip", closing the
+ *          loop back to the matching round-trip deck.
+ *      Both always also offer "Home".
+ * The counterpart deck is derived from the current filename by swapping
+ * roundtrip <-> inplace, so every variant (vertical / python / posit) maps to
+ * its sibling automatically.
+ */
+(function () {
+  const file = (location.pathname.split('/').pop() || '').replace(/\.html$/, '') || 'index';
+  const isRoundtrip = /roundtrip/.test(file);
+  const isInplace   = /inplace/.test(file);
+  const counterpart = isRoundtrip ? file.replace('roundtrip', 'inplace')
+                    : isInplace   ? file.replace('inplace', 'roundtrip')
+                    : null;
+
+  const ACCENT = window.ORB_SNOWFLAKE || '#29B5E8';
+
+  // ---- persistent Home link ----
+  const home = document.createElement('a');
+  home.className = 'orb-nav-home';
+  home.href = 'index.html';
+  home.setAttribute('aria-label', 'Back to home');
+  home.innerHTML = '← Home';
+
+  // ---- completion call-to-action ----
+  const cta = document.createElement('div');
+  cta.className = 'orb-nav-cta';
+  const parts = [];
+  if (isRoundtrip && counterpart) {
+    parts.push('<span class="orb-nav-cta-label">That’s the round-trip.</span>');
+    parts.push('<a class="orb-nav-btn orb-nav-btn-go" href="' + counterpart + '.html">See the orbital way →</a>');
+  } else if (isInplace && counterpart) {
+    parts.push('<span class="orb-nav-cta-label">That’s the orbital way.</span>');
+    parts.push('<a class="orb-nav-btn" href="' + counterpart + '.html">↺ Replay the round-trip</a>');
+  }
+  parts.push('<a class="orb-nav-btn" href="index.html">All decks</a>');
+  cta.innerHTML = parts.join('');
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.body.appendChild(home);
+    document.body.appendChild(cta);
+    document.documentElement.style.setProperty('--orb-nav-accent', ACCENT);
+  });
+
+  // ---- reveal completion gating: show the CTA when every fragment is shown ----
+  function frags(slide) { return slide ? slide.querySelectorAll('.fragment') : []; }
+  function allShown(slide) {
+    const f = frags(slide);
+    if (!f.length) return false;
+    for (const el of f) if (!el.classList.contains('visible')) return false;
+    return true;
+  }
+  function sync() {
+    if (typeof Reveal === 'undefined' || !Reveal.getCurrentSlide) return;
+    const done = allShown(Reveal.getCurrentSlide());
+    cta.classList.toggle('orb-nav-cta-show', done);
+  }
+  (function boot() {
+    if (typeof Reveal === 'undefined' || !Reveal.on) { setTimeout(boot, 50); return; }
+    Reveal.on('fragmentshown',  sync);
+    Reveal.on('fragmenthidden', sync);
+    Reveal.on('slidechanged',   sync);
+    (function ready() {
+      if (!Reveal.getCurrentSlide || !Reveal.getCurrentSlide()) { setTimeout(ready, 60); return; }
+      sync();
+    })();
+  })();
+})();
+</script>
