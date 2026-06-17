@@ -88,12 +88,13 @@ The modules are **parametrized** so more than one can run on a page (the combine
 
 ## Deck navigation overlay
 
-`js/orbital-nav.html` (loaded for every deck via `_quarto.yml`) adds a persistent "Home"
-link and a completion CTA that fades in on the deck's **last** slide once every fragment
-is shown (`Reveal.isLastSlide()` gates it so combined decks don't surface it between their
-two sections). On standalone round-trip decks the CTA links to the matching in-place deck
-(before → after); on in-place decks it offers a replay of the round-trip; both always link
-home. The counterpart deck is derived from the filename by swapping `roundtrip`↔`inplace`.
+`js/orbital-nav.html` (loaded for every deck via `_quarto.yml`) adds a completion CTA that
+fades in on the deck's **last** slide once every fragment is shown (`Reveal.isLastSlide()`
+gates it so combined decks don't surface it between their two sections). On standalone
+round-trip decks the CTA links to the matching in-place deck (before → after); on in-place
+decks it offers a replay of the round-trip; all decks get an "All decks" link back to the
+landing page. The counterpart deck is derived from the filename by swapping
+`roundtrip`↔`inplace`.
 
 ## Build / preview / publish
 
@@ -118,5 +119,5 @@ the project `render:` glob.
 - `js/orbital-base.html` — `ORB.build(opts)`: the shared starting frame, all layout maths, the data table, and the DOM helpers, returned as a context object. **Both modules consume this — change geometry here, once.** `opts.groupSession` toggles whether the session winds down as one `.orb-rgroup` (in-place) or its panel/card dim individually (round-trip).
 - `js/orbital-roundtrip.html`, `js/orbital-inplace.html` — the two animation modules, each exposing an `ORB.init*` function (see "Two animations on one page"); each owns only its phase choreography and calls `ORB.build()` lazily inside `render()`.
 - `js/orbital-combined-init.html` — wiring for the combined decks: binds each module to its own stage/slide.
-- `js/orbital-nav.html` — the Home link + before→after completion CTA (loaded for every deck).
+- `js/orbital-nav.html` — the before→after completion CTA (loaded for every deck).
 - `css/demos.css` — deck styles (SCSS-layered), including the nav overlay; `css/index.css` — landing-page styles.

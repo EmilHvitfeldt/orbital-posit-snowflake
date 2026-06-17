@@ -381,29 +381,7 @@ section:has(.orb-slide) { overflow: hidden; }
   align-items: flex-start;
 }
 
-/* ---- deck navigation overlay (Home link + completion CTA) ---- */
-.orb-nav-home {
-  position: fixed;
-  top: 14px;
-  left: 16px;
-  z-index: 60;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--tm-ink);
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(29, 36, 51, 0.18);
-  border-radius: 999px;
-  padding: 5px 14px;
-  opacity: 0.55;
-  transition: opacity 0.2s ease, border-color 0.2s ease;
-}
-.orb-nav-home:hover {
-  opacity: 1;
-  border-color: var(--orb-nav-accent, #29B5E8);
-  color: var(--tm-ink);
-}
-
+/* ---- deck navigation overlay (completion CTA) ---- */
 .orb-nav-cta {
   position: fixed;
   left: 50%;
