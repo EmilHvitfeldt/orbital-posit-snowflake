@@ -16,11 +16,11 @@ are built — the `TM` namespace helpers, the idempotent `render(stage)` pattern
 any future development here, **read that file first**; the notes below are only the
 deltas specific to this repo.
 
-## The 16-deck matrix (2 modules + knobs)
+## The deck matrix (2 modules + knobs)
 
 Everything is driven by **two** animation modules and a set of `window.ORB_*` knobs set
-in a `` ```{=html} `` block at the top of each `.qmd`. The decks are the full cross of
-four axes:
+in a `` ```{=html} `` block at the top of each `.qmd`. The single-animation decks are the
+full cross of four axes:
 
 `{R, Python} × {non-Posit, Posit} × {roundtrip, inplace} × {horizontal, vertical}` = 16.
 
@@ -28,6 +28,13 @@ four axes:
   workflow card, scores, and the prediction travels back to fill `.pred`.
 - `js/orbital-inplace.html` — the orbital way: `orbital()` compiles the model to a SQL
   chip, the chip docks in Snowflake, `.pred` fills in place, the session winds down.
+
+### Combined "before → after" decks (`*-combined*.qmd`)
+
+On top of the 16, there are **8 combined decks** — `{R, Python} × {non-Posit, Posit} ×
+{horizontal, vertical}` — that put the round-trip and the in-place animations in **one
+deck as two slides**, so the viewer steps through "before" then arrows into "after" in one
+flow. They reuse both modules unchanged: see "Two animations on one page" below.
 
 ### Knobs (read with a fallback in each module)
 
@@ -59,7 +66,34 @@ and re-verify every affected deck.
 - `css/demos.css` is loaded as a reveal theme, so it needs the `/*-- scss:rules --*/`
   boundary.
 - Vertical decks set their own portrait `width: 900` / `height: 1200`; the module sets the
-  inner `#orb-stage` size from `ORB_ORIENT`.
+  inner stage size from `ORB_ORIENT`. CSS targets the stage via `[id^="orb-stage"]` so it
+  covers both the lone `#orb-stage` and the combined deck's `#orb-stage-rt` / `#orb-stage-ip`.
+
+## Two animations on one page (combined decks)
+
+The modules are **parametrized** so more than one can run on a page (the combined decks):
+
+- Each module is an init function — `ORB.initRoundtrip(opts)` / `ORB.initInplace(opts)` —
+  taking `{stageId, markerClass, fragmentIds}`, all defaulting to the standalone values.
+  Standalone decks self-init at the bottom of the module **unless `window.ORB_COMBINED`**
+  is set; combined decks set that knob and call the init functions themselves (in
+  `js/orbital-combined-init.html`), once per stage.
+- `ORB.build()` takes `opts.stageId` (default `'orb-stage'`) and caches per stage id in
+  `ORB._ctx[stageId]`, so each stage gets its own independent context.
+- The two modules' default `fragmentIds` differ (`orb-rt-*` vs `orb-compile`/…), so a
+  combined deck only overrides `stageId` + `markerClass`, not the fragment ids.
+- A combined deck = one knob block (`ORB_COMBINED` + the usual knobs) + two `.orb-slide`
+  sections, each with its own stage `<div>` and marker class, and its own
+  `include-after-body` listing both modules then `js/orbital-combined-init.html`.
+
+## Deck navigation overlay
+
+`js/orbital-nav.html` (loaded for every deck via `_quarto.yml`) adds a persistent "Home"
+link and a completion CTA that fades in on the deck's **last** slide once every fragment
+is shown (`Reveal.isLastSlide()` gates it so combined decks don't surface it between their
+two sections). On standalone round-trip decks the CTA links to the matching in-place deck
+(before → after); on in-place decks it offers a replay of the round-trip; both always link
+home. The counterpart deck is derived from the filename by swapping `roundtrip`↔`inplace`.
 
 ## Build / preview / publish
 
@@ -69,17 +103,20 @@ quarto render               # render the whole site into docs/
 ```
 
 The site is a Quarto **website** (`output-dir: docs`) so GitHub Pages can serve it from the
-main branch `/docs` folder. `index.qmd` is the landing page linking every deck; `.nojekyll`
+main branch `/docs` folder. `index.qmd` is the landing page linking every deck (16 single +
+8 combined); `.nojekyll`
 keeps `site_libs/` intact. Non-deck markdown (`README.md`) is excluded from rendering via
 the project `render:` glob.
 
 ## Layout
 
-- `_quarto.yml` — website + format defaults; loads anime.js, `js/infra.html`, and `js/orbital-base.html` for every deck.
-- `index.qmd` — landing page (HTML) linking all 16 decks.
-- `*.qmd` — the decks (knob blocks at top).
+- `_quarto.yml` — website + format defaults; loads anime.js, `js/infra.html`, `js/orbital-base.html`, and `js/orbital-nav.html` for every deck.
+- `index.qmd` — landing page (HTML) linking all decks (16 single + 8 combined).
+- `*.qmd` — the decks (knob blocks at top); `*-combined*.qmd` are the two-slide before→after decks.
 - `js/anime.min.js` — vendored anime.js v3.2.2 (referenced by the header include; listed under project `resources:` so it is copied into `docs/`).
 - `js/infra.html` — shared `TM` helpers (copied from tidy-animations; keep in sync).
 - `js/orbital-base.html` — `ORB.build(opts)`: the shared starting frame, all layout maths, the data table, and the DOM helpers, returned as a context object. **Both modules consume this — change geometry here, once.** `opts.groupSession` toggles whether the session winds down as one `.orb-rgroup` (in-place) or its panel/card dim individually (round-trip).
-- `js/orbital-roundtrip.html`, `js/orbital-inplace.html` — the two animation modules; each owns only its phase choreography and calls `ORB.build()` lazily inside `render()`.
-- `css/demos.css` — deck styles (SCSS-layered); `css/index.css` — landing-page styles.
+- `js/orbital-roundtrip.html`, `js/orbital-inplace.html` — the two animation modules, each exposing an `ORB.init*` function (see "Two animations on one page"); each owns only its phase choreography and calls `ORB.build()` lazily inside `render()`.
+- `js/orbital-combined-init.html` — wiring for the combined decks: binds each module to its own stage/slide.
+- `js/orbital-nav.html` — the Home link + before→after completion CTA (loaded for every deck).
+- `css/demos.css` — deck styles (SCSS-layered), including the nav overlay; `css/index.css` — landing-page styles.
