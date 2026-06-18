@@ -1,61 +1,5 @@
 [
   {
-    "objectID": "python-posit-combined.html#the-before-round-trip",
-    "href": "python-posit-combined.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after (Python, Posit)",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "python-posit-combined.html#the-orbital-way-in-place",
-    "href": "python-posit-combined.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after (Python, Posit)",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
-  },
-  {
-    "objectID": "python-orbital-combined.html#the-before-round-trip",
-    "href": "python-orbital-combined.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after (Python)",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "python-orbital-combined.html#the-orbital-way-in-place",
-    "href": "python-orbital-combined.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after (Python)",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
-  },
-  {
-    "objectID": "posit-combined.html#the-before-round-trip",
-    "href": "posit-combined.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after (Posit)",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "posit-combined.html#the-orbital-way-in-place",
-    "href": "posit-combined.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after (Posit)",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
-  },
-  {
-    "objectID": "orbital-combined.html#the-before-round-trip",
-    "href": "orbital-combined.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "orbital-combined.html#the-orbital-way-in-place",
-    "href": "orbital-combined.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
-  },
-  {
     "objectID": "index.html",
     "href": "index.html",
     "title": "orbital + Snowflake",
@@ -63,80 +7,17 @@
     "text": "These RevealJS decks contrast two ways of scoring a trained tidymodels (R) or scikit-learn (Python) model against data living in Snowflake:\nEach deck comes in a Posit framing (the session runs inside Snowflake via the Posit Team Native App) and a vertical (portrait) layout, in both R and Python — 16 decks in all. Use the arrow keys to step through the stages."
   },
   {
-    "objectID": "index.html#both-in-one-flow",
-    "href": "index.html#both-in-one-flow",
-    "title": "orbital + Snowflake",
-    "section": "Both, in one flow",
-    "text": "Both, in one flow\nStep through the round-trip (“before”), then continue with an arrow into the orbital way (“after”) in a single deck.\n\n\n\n\nsession beside Snowflake\nsession inside Snowflake (Posit)\n\n\n\n\nR · tidymodels\nhorizontal · vertical\nhorizontal · vertical\n\n\nPython · scikit-learn\nhorizontal · vertical\nhorizontal · vertical"
-  },
-  {
     "objectID": "index.html#r-tidymodels",
     "href": "index.html#r-tidymodels",
     "title": "orbital + Snowflake",
     "section": "R · tidymodels",
-    "text": "R · tidymodels\n\n\n\n\nround-trip (the “before”)\norbital (in place)\n\n\n\n\nsession beside Snowflake\nhorizontal · vertical\nhorizontal · vertical\n\n\nsession inside Snowflake (Posit)\nhorizontal · vertical\nhorizontal · vertical"
+    "text": "R · tidymodels\n\n\n\n\nround-trip (the “before”)\norbital (in place)\n\n\n\n\nsession beside Snowflake\nhorizontal (gif · mp4) · vertical (gif · mp4)\nhorizontal (gif · mp4) · vertical (gif · mp4)\n\n\nsession inside Snowflake (Posit)\nhorizontal (gif · mp4) · vertical (gif · mp4)\nhorizontal (gif · mp4) · vertical (gif · mp4)"
   },
   {
     "objectID": "index.html#python-scikit-learn",
     "href": "index.html#python-scikit-learn",
     "title": "orbital + Snowflake",
     "section": "Python · scikit-learn",
-    "text": "Python · scikit-learn\n\n\n\n\nround-trip (the “before”)\norbital (in place)\n\n\n\n\nsession beside Snowflake\nhorizontal · vertical\nhorizontal · vertical\n\n\nsession inside Snowflake (Posit)\nhorizontal · vertical\nhorizontal · vertical\n\n\n\n\nBuilt with Quarto RevealJS + anime.js, following the tidy-animations framework. See orbital for the real package."
-  },
-  {
-    "objectID": "orbital-combined-vertical.html#the-before-round-trip",
-    "href": "orbital-combined-vertical.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after (vertical)",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "orbital-combined-vertical.html#the-orbital-way-in-place",
-    "href": "orbital-combined-vertical.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after (vertical)",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
-  },
-  {
-    "objectID": "posit-combined-vertical.html#the-before-round-trip",
-    "href": "posit-combined-vertical.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after (Posit, vertical)",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "posit-combined-vertical.html#the-orbital-way-in-place",
-    "href": "posit-combined-vertical.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after (Posit, vertical)",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
-  },
-  {
-    "objectID": "python-orbital-combined-vertical.html#the-before-round-trip",
-    "href": "python-orbital-combined-vertical.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after (Python, vertical)",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "python-orbital-combined-vertical.html#the-orbital-way-in-place",
-    "href": "python-orbital-combined-vertical.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after (Python, vertical)",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
-  },
-  {
-    "objectID": "python-posit-combined-vertical.html#the-before-round-trip",
-    "href": "python-posit-combined-vertical.html#the-before-round-trip",
-    "title": "orbital + Snowflake: before & after (Python, Posit, vertical)",
-    "section": "The “before”: round-trip",
-    "text": "The “before”: round-trip"
-  },
-  {
-    "objectID": "python-posit-combined-vertical.html#the-orbital-way-in-place",
-    "href": "python-posit-combined-vertical.html#the-orbital-way-in-place",
-    "title": "orbital + Snowflake: before & after (Python, Posit, vertical)",
-    "section": "The orbital way: in place",
-    "text": "The orbital way: in place"
+    "text": "Python · scikit-learn\n\n\n\n\nround-trip (the “before”)\norbital (in place)\n\n\n\n\nsession beside Snowflake\nhorizontal (gif · mp4) · vertical (gif · mp4)\nhorizontal (gif · mp4) · vertical (gif · mp4)\n\n\nsession inside Snowflake (Posit)\nhorizontal (gif · mp4) · vertical (gif · mp4)\nhorizontal (gif · mp4) · vertical (gif · mp4)\n\n\n\n\nBuilt with Quarto RevealJS + anime.js, following the tidy-animations framework. See orbital for the real package."
   }
 ]

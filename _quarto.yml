@@ -13,6 +13,9 @@ project:
     - js/anime.min.js
     # Posit Workbench logo, referenced by URL from the session header chip
     - js/posit-workbench.svg
+    # captured GIF/MP4 recordings of each deck, offered as download links on the
+    # landing page
+    - assets/
 
 website:
   title: "orbital + Snowflake"
